@@ -65,11 +65,7 @@ object Test{
     val dt = new PastryTest(bindPort, bootAddress, env);
     } catch {
       case e: Exception => {
-        // remind user how to use
-        println("Usage:");
-        println("scala [-cp FreePastry-.jar] rice.tutorial.lesson1.DistTutorial localbindport bootIP bootPort");
-        println("Example scala rice.tutorial.DistTutorial 9001 pokey.cs.almamater.edu 9001");
-        throw e;
+        sys.exit();
       }
     }
   }
