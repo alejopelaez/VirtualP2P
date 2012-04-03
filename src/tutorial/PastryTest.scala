@@ -1,8 +1,8 @@
-package test
+package tutorial
 
 import java.net._;
 import java.io.IOException;
-import rice.pastry._;
+
 import rice.environment.Environment;
 import rice.pastry.socket.SocketPastryNodeFactory;
 import rice.pastry.standard.RandomNodeIdFactory;
@@ -23,6 +23,10 @@ class PastryTest(bindPort: Int, bootAddress: InetSocketAddress, env: Environment
   // construct a node, but this does not cause it to boot
   val node = factory.newNode();
 
+  println(bootAddress)
+
+  val app = new MyApp(node);
+
   // in later tutorials, we will register applications before calling boot
   node.boot(bootAddress);
 
@@ -41,7 +45,17 @@ class PastryTest(bindPort: Int, bootAddress: InetSocketAddress, env: Environment
     }
   }
 
-   println("Finished creating new node "+node);
+  println("Finished creating new node " + node)
+  env.getTimeSource.sleep(10000)
+  for (i <- 0 to 10) {
+    var randId = nidFactory.generateNodeId();
+    app.routeMyMsg(randId);
+    env.getTimeSource.sleep(1000);
+  }
+
+  println("Finished sending messages")
+  //env.getTimeSource().sleep(10000);
+
 }
 
 object Test{
@@ -56,13 +70,14 @@ object Test{
       // the port to use locally
       val bindPort = Integer.parseInt(args(0));
 
-    // build the bootAddress from the command line args
-    val bootAddr = InetAddress.getByName(args(1));
-    val bootPort = Integer.parseInt(args(2));
-    val bootAddress = new InetSocketAddress(bootAddr,bootPort);
+      // build the bootAddress from the command line args
+      val bootAddr = InetAddress.getByName(args(1));
+      val bootPort = Integer.parseInt(args(2));
+      val bootAddress = new InetSocketAddress(bootAddr,bootPort);
 
-    // launch our node!
-    val dt = new PastryTest(bindPort, bootAddress, env);
+      val dt = new PastryTest(bindPort, bootAddress, env);
+      dt
+      sys.exit();
     } catch {
       case e: Exception => {
         sys.exit();
