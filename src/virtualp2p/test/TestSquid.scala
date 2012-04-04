@@ -11,7 +11,7 @@ import virtualp2p.squid._
 object TestSquid{
   def main(args: Array[String]){
     var squidNode : SquidNode = new SquidNode()
-    println("Created squid node")
-    squidNode
+    squidNode.join
+    sys.exit
   }
 }

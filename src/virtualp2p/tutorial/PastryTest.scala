@@ -5,7 +5,9 @@ import java.io.IOException;
 
 import rice.environment.Environment;
 import rice.pastry.socket.SocketPastryNodeFactory;
-import rice.pastry.standard.RandomNodeIdFactory;
+import rice.pastry.standard.RandomNodeIdFactory
+import rice.pastry.NodeIdFactory
+;
 
 /**
  * User: alejandro
@@ -21,9 +23,7 @@ class PastryTest(bindPort: Int, bootAddress: InetSocketAddress, env: Environment
   val factory = new SocketPastryNodeFactory(nidFactory, bindPort, env);
 
   // construct a node, but this does not cause it to boot
-  val node = factory.newNode();
-
-  println(bootAddress)
+  val node = factory.newNode;
 
   val app = new MyApp(node);
 
@@ -63,7 +63,6 @@ object Test{
     // Loads pastry settings
     val env = new Environment();
 
-    // disable the UPnP setting (in case you are testing this on a NATted LAN)
     env.getParameters.setString("nat_search_policy","never");
 
     try {

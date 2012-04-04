@@ -54,7 +54,7 @@ class SquidId(dimensions: Int, bitLength: Int, keyTypes: Array[String]) {
 
   /**
    * @return the numeric representation of all values of this key. Depending on the number of bits defined for each
-   *         dimension in the keyspace, this method might scale down numeric values that are too big and use only part of
+   *         dimension in the keySpace, this method might scale down numeric values that are too big and use only part of
    *         alphabetic keys.
    */
   def getKeyBits: Array[BigInt] = {
@@ -98,7 +98,7 @@ class SquidId(dimensions: Int, bitLength: Int, keyTypes: Array[String]) {
 
   /**
    * @return the numeric representation of all values of this key. Depending on the number of bits defined for each
-   *         dimension in the keyspace, this method might scale down numeric values that are too big and use only part of
+   *         dimension in the keySpace, this method might scale down numeric values that are too big and use only part of
    *         alphabetic keys.
    */
   def getKeys: Array[(BigInt, BigInt)] = {
