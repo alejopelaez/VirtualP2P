@@ -1,4 +1,4 @@
-package tutorial
+package virtualp2p.tutorial
 
 import java.net._;
 import java.io.IOException;

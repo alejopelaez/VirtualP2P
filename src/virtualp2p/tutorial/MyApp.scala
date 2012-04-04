@@ -1,4 +1,4 @@
-package tutorial
+package virtualp2p.tutorial
 
 import rice.p2p.commonapi.Application;
 import rice.p2p.commonapi.Endpoint;
