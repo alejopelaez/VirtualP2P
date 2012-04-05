@@ -16,22 +16,24 @@ import java.math.BigInteger
  * @param keyTypes  The types of the dimensions
  */
 
-class SquidId(dimensions: Int, bitLength: Int, keyTypes: Array[String]) {
+class SquidId(val dimensions: Int, val bitLength: Int, val keyTypes: Array[String], var keyData : Array[(String, String)]) {
 
-  object KeyTypes extends Enumeration {
-    type KeyTypes = Val
-    val Numeric = "Numeric"
-    val Alphabetic = "Alphabetic"
+  object Types extends Enumeration {
+    type Types = Val
+    val Numeric = "numeric"
+    val Alphabetic = "alphabetic"
   }
 
   //var keySpace : String
-  var spaceDimensions: Int = dimensions
+  val spaceDimensions: Int = dimensions
   val types: Array[String] = keyTypes
   //var locality : String = ChordID.LOCAL_CLUSTER;
-  var keys: Array[(String, String)] = new Array[(String, String)](spaceDimensions)
-  var bits: Int = bitLength
+  var keys: Array[(String, String)] = keyData
+  val bits: Int = bitLength
   var hasRanges: Boolean = false
   //var ChordIDCluster chordMapping : ChordIDCluster = null;
+
+  //def this(dimensions: Int, bitLength: Int, keyTypes: Array[String]) = this(dimensions, bitLength, keyTypes, new Array[(String, String)])
 
   /**
    * Sets a single value for the given dimension.
@@ -61,7 +63,7 @@ class SquidId(dimensions: Int, bitLength: Int, keyTypes: Array[String]) {
     var ret = new Array[BigInt](spaceDimensions);
     for (dimension <- 0 to spaceDimensions - 1) {
       types(dimension) match {
-        case KeyTypes.Numeric => {
+        case Types.Numeric => {
           var keyValue = new BigInteger(keys(dimension)._1);
           // Scale down if necessary
           if (keyValue.bitLength > bits) {
@@ -70,7 +72,7 @@ class SquidId(dimensions: Int, bitLength: Int, keyTypes: Array[String]) {
           }
           ret(dimension) = new BigInt(keyValue);
         }
-        case KeyTypes.Alphabetic => {
+        case Types.Alphabetic => {
           var numChar = bits / 5;
           var auxKey = new String(keys(dimension)._1);
           var fitting = numChar - auxKey.length();
@@ -105,7 +107,7 @@ class SquidId(dimensions: Int, bitLength: Int, keyTypes: Array[String]) {
     var ret = new Array[(BigInt, BigInt)](spaceDimensions);
     for (dimension <- 0 to spaceDimensions - 1) {
       types(dimension) match {
-        case KeyTypes.Numeric => {
+        case Types.Numeric => {
           var keyValue1: BigInteger = new BigInteger(keys(dimension)._1);
           var keyValue2: BigInteger = new BigInteger(keys(dimension)._2);
           // Scale down if necessary
@@ -119,7 +121,7 @@ class SquidId(dimensions: Int, bitLength: Int, keyTypes: Array[String]) {
           }
           ret(dimension) = (new BigInt(keyValue1), new BigInt(keyValue2));
         }
-        case KeyTypes.Alphabetic => {
+        case Types.Alphabetic => {
           var numChar = bits / 5;
           var auxKey1 = new String(keys(dimension)._1);
           var auxKey2 = new String(keys(dimension)._2);

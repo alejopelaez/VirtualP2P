@@ -12,6 +12,13 @@ object TestSquid{
   def main(args: Array[String]){
     var squidNode : SquidNode = new SquidNode()
     squidNode.join
-    sys.exit
+    squidNode.routeTo(new SquidId(1, 32, Array("numeric"), Array(("93361", "93361"))), "asdf".getBytes)
+    squidNode.routeTo(new SquidId(1, 32, Array("alphabetic"), Array(("hola", "hola"))), "asdf".getBytes)
+    squidNode.routeTo(new SquidId(1, 32, Array("numeric"), Array(("99993122", "99993122"))), "holaaa".getBytes)
+
+    var id : SquidId =  new SquidId(1, 32, Array("numeric"), Array(("93361", "93369")))
+    id.setKey(0, ("93361", "93369"))
+    squidNode.routeTo(id, "complejo".getBytes())
+    //sys.exit
   }
 }

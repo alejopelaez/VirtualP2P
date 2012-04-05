@@ -15,7 +15,7 @@ import rice.pastry.NodeIdFactory
  * Time: 06:21 PM
  */
 
-class PastryTest(bindPort: Int, bootAddress: InetSocketAddress, env: Environment) {
+class PastryTest(val bindPort: Int, val bootAddress: InetSocketAddress, env: Environment) {
   // Generate the NodeIds Randomly
   val nidFactory = new RandomNodeIdFactory(env);
 
