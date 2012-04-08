@@ -48,7 +48,7 @@ class SquidNode(propertiesFilename : String) extends Application{
 
   var joined : Boolean = false
 
-  var callback : Any => Any = null
+  var callback : Array[Byte] => Unit = null
 
   // The port
   val localPort : Int = Integer.parseInt(properties.getProperty("localPort", "9000"))
@@ -117,6 +117,9 @@ class SquidNode(propertiesFilename : String) extends Application{
       routeComplex(squidId, data)
     }
   }
+  def routeTo(squidId : SquidId, msg : SquidMessage) {
+    routeTo(squidId, msg.data)
+  }
 
   /**
    * Routes a message through the squid overlay where the key is assumed
@@ -136,6 +139,9 @@ class SquidNode(propertiesFilename : String) extends Application{
     val msg : SquidMessage = new SquidMessage(endPoint.getId, id, data);
     endPoint.route(id, msg, null);
   }
+  def routeSimple(squidId : SquidId, msg : SquidMessage) {
+    routeSimple(squidId, msg.data)
+  }
 
   /**
     * Routes a message through the squid overlay where the key is assumed
@@ -145,6 +151,8 @@ class SquidNode(propertiesFilename : String) extends Application{
    */
   def routeComplex(squidId : SquidId, data : Array[Byte]) {
   }
+  def routeComplex(squidId : SquidId, msg : SquidMessage) {
+  }
 
   /**
    * Called when we receive a message.
@@ -152,7 +160,7 @@ class SquidNode(propertiesFilename : String) extends Application{
   def deliver(id : Id, message : Message) {
     val squidMessage : SquidMessage = message.asInstanceOf[SquidMessage]
     System.out.println("SquidNode: " + this + " received " + new String(squidMessage.data));
-    callback(message)
+    callback(squidMessage.data)
   }
 
   /**
@@ -170,7 +178,7 @@ class SquidNode(propertiesFilename : String) extends Application{
     true;
   }
 
-  def register(func : Any => Any) {
+  def register(func : Array[Byte] => Unit) {
     callback = func
   }
 }

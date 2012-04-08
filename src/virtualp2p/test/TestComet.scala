@@ -9,9 +9,12 @@ import virtualp2p.comet.Comet
  */
 
 object TestComet {
-  var comet : Comet = new Comet
+  def main(args: Array[String]){
+    var comet : Comet = new Comet
+    comet.join
 
-  comet.in(null)
+    comet.in(null)
 
-  sys.exit
+    //sys.exit
+  }
 }
