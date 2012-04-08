@@ -75,14 +75,32 @@ public class HilbertSFC {
         return ret;
     }
 
+    public int pow(int num, int k){
+        if(k == 0)return 1;
+        if(k % 2 == 0)return pow(num,k/2) * pow(num,k/2);
+        else return pow(num,k/2) * pow(num,k/2) * num;
+    }
+
+    public int root(int num, int k){
+        int high = num / 2; int low = 0;
+        int mid = (high + low) / 2;
+        while(high != low && mid != low){
+            if(pow(mid, k) == num)return mid;
+            else if(pow(mid, k) > num) high = mid;
+            else low = mid;
+            mid = (high + low) / 2;
+        }
+        return mid;
+    }
+
     /**
      * Convert a set of coordinates from the mapping space to a one dimensional index.
      * @param coords each coordinate must have no more than the number of bits defined for the SFC instance
      */
     public BigInteger coordinatesToIndex(BigInteger[] coords) {
         dimensions = coords.length;
-        bits = Integer.parseInt(System.getProperties().getProperty("bitLength", "16"));
-        init(dimensions,  bits);
+        bits = Integer.parseInt(System.getProperties().getProperty("bitLength", "160"));
+        init(dimensions,  root(bits, dimensions));
         BigInteger index = new BigInteger("0");
         // Verification
         boolean argumentsPassed = true;

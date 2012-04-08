@@ -29,7 +29,25 @@ class SquidId(val dimensions: Int, val bitLength: Int, val keyTypes: Array[Strin
   val types: Array[String] = keyTypes
   //var locality : String = ChordID.LOCAL_CLUSTER;
   var keys: Array[(String, String)] = keyData
-  val bits: Int = bitLength
+
+  def root(num : Int, k : Int) : Int = {
+    def pow(num : Int, k : Int) : Int = {
+      if (k == 0)return 1;
+      else if (k%2 == 0)return pow(num, k/2) * pow(num, k/2);
+      else return pow(num, k/2) * pow(num, k/2) * num;
+    }
+
+    var high = num; var low = 0; var mid = (high + low) / 2;
+    while(high != low && mid != low){
+      if (pow(mid, k) == num)return mid;
+      else if (pow(mid, k) > num)high = mid;
+      else low = mid;
+      mid = (high + low) / 2;
+    }
+    return mid;
+  }
+  val bits: Int = root(bitLength, dimensions)
+
   var hasRanges: Boolean = false
   //var ChordIDCluster chordMapping : ChordIDCluster = null;
 
@@ -73,21 +91,17 @@ class SquidId(val dimensions: Int, val bitLength: Int, val keyTypes: Array[Strin
           ret(dimension) = new BigInt(keyValue);
         }
         case Types.Alphabetic => {
-          var numChar = bits / 5;
+          var numChar = bits / 4;
           var auxKey = new String(keys(dimension)._1);
           var fitting = numChar - auxKey.length();
-          if (fitting > 0) {
-            var padChar = "a";
-            for (j <- 0 to fitting - 1)
-              auxKey += padChar;
-          }
+          if (fitting > 0) auxKey += "a" * fitting
           else if (fitting < 0) {
             auxKey = auxKey.substring(0, numChar);
           }
           var letter: Int = (Character.toLowerCase(auxKey.charAt(0)) - 'a');
           var keyValue = new BigInteger(Integer.toString(letter));
           for (j <- 1 to numChar - 1) {
-            keyValue = keyValue.shiftLeft(5);
+            keyValue = keyValue.shiftLeft(4);
             letter = (Character.toLowerCase(auxKey.charAt(j)) - 'a');
             keyValue = keyValue.add(new BigInteger(Integer.toString(letter)));
           }

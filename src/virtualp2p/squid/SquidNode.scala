@@ -39,8 +39,6 @@ class SquidNode(propertiesFilename : String) extends Application{
   System.getProperties.load(input)
   val properties = System.getProperties
 
-  val BIT_LENGTH   = Integer.parseInt(properties.getProperty("bitLength", "16"))
-
   val env = new Environment("config/pastry")
 
   var node : PastryNode = null
@@ -49,6 +47,8 @@ class SquidNode(propertiesFilename : String) extends Application{
   var mapping : HilbertSFC = new HilbertSFC
 
   var joined : Boolean = false
+
+  var callback : Any => Any = null
 
   // The port
   val localPort : Int = Integer.parseInt(properties.getProperty("localPort", "9000"))
@@ -63,7 +63,7 @@ class SquidNode(propertiesFilename : String) extends Application{
    * If bootstrap property is set to true creates a new ring, else it tries to join an existing ring
    * using the bootAddress and bootPort properties.
    */
-  def join() {
+  def join() = {
     // construct the PastryNodeFactory, this is how we use rice.pastry.socket
     val factory = new SocketPastryNodeFactory(new RandomNodeIdFactory(env), localPort, env)
 
@@ -94,7 +94,7 @@ class SquidNode(propertiesFilename : String) extends Application{
         // abort if can't join
         if (node.joinFailed) {
           println("Could not join the FreePastry ring.  Reason:" + node.joinFailedReason)
-          sys.exit()
+          throw new JoinException("Could not join the FreePastry ring.  Reason:" + node.joinFailedReason)
         }
       }
     }
@@ -144,42 +144,6 @@ class SquidNode(propertiesFilename : String) extends Application{
    * @param data The data to be sent.
    */
   def routeComplex(squidId : SquidId, data : Array[Byte]) {
-    val range : Array[(BigInt, BigInt)] = squidId.getKeyRanges();
-    var refinement = 0;
-    var partialIndex : BigInt = null;
-    var refineFurther : Boolean = true;
-    var doDeliver : Boolean = false;
-
-    if (refinement > 0) {
-      if (covers(partialIndex, refinement)) {
-        refineFurther = false;
-        doDeliver = true;
-      }
-      else {
-        val coords : Array[BigInt] = mapping.indexToCoordinates(new BigInteger(endPoint.getId.toString));
-        boolean included = true;
-        for (i <- 0 to coords.length - 1)
-          if (coords(i) < range(i)._1 || coords(i) > range(i)._2)
-            included = false;
-
-        if (included)
-          doDeliver = true;
-      }
-
-      if (refineFurther) {
-        val refiner : ClusterRefiner = new ClusterRefiner(mapping);
-        refiner.refine(range, refinement+1);
-        val numDestinations : Int = refiner.getDivisionSize();
-        for (i <- 0 to numDestinations - 1) {
-          val msg : Array[Byte] = SquidMessage.newRoutingMessage(refiner.getRange(i), refiner.currentRefinement(), refiner.getIndex(i), userMessage).serialize();
-          endPoint.route(refiner.getIndex(i), msg, null);
-          //chord.routeTo(chord.generateID(refiner.getIndex(i)), "squid", chordMessage);
-        }
-      }
-      if (doDeliver) {
-        deliverMessage(userMessage);
-      }
-    }
   }
 
   /**
@@ -187,7 +151,8 @@ class SquidNode(propertiesFilename : String) extends Application{
    */
   def deliver(id : Id, message : Message) {
     val squidMessage : SquidMessage = message.asInstanceOf[SquidMessage]
-    System.out.println(this + " received " + new String(squidMessage.data));
+    System.out.println("SquidNode: " + this + " received " + new String(squidMessage.data));
+    callback(message)
   }
 
   /**
@@ -204,4 +169,13 @@ class SquidNode(propertiesFilename : String) extends Application{
   def forward(message : RouteMessage) : Boolean = {
     true;
   }
+
+  def register(func : Any => Any) {
+    callback = func
+  }
 }
+
+/**
+ * Class to hold the joining exception
+ */
+class JoinException(msg:String) extends Exception(msg)
