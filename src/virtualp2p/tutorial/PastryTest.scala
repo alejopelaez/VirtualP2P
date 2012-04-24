@@ -6,7 +6,6 @@ import java.io.IOException;
 import rice.environment.Environment;
 import rice.pastry.socket.SocketPastryNodeFactory;
 import rice.pastry.standard.RandomNodeIdFactory
-import rice.pastry.NodeIdFactory
 ;
 
 /**

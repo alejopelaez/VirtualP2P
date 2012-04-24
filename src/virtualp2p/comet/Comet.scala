@@ -4,8 +4,9 @@ import scala.util.Marshal
 import java.io.{FileNotFoundException, FileInputStream}
 import virtualp2p.common._
 import virtualp2p.squid.{SquidId, JoinException, SquidNode}
-import collection.mutable.ListBuffer
 import scala.Array
+import collection.mutable.ListBuffer
+import rice.p2p.commonapi.NodeHandle
 
 /**
  * User: alejandro
@@ -70,7 +71,7 @@ class Comet(propertiesFilename : String) {
    * @param tup The tuple to be stored.
    */
   def in(tup : XmlTuple){
-    tup.from = squid.endPoint.getId.toString
+    tup.from = squid.endPoint.getLocalNodeHandle
     var id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
     squid.routeTo(id, Marshal.dump(Array(tup)))
   }
@@ -82,7 +83,7 @@ class Comet(propertiesFilename : String) {
    */
   def rd(tup : XmlTuple, blocking : Boolean = false) {
     tup.operation = OperationTypes.RD.toString
-    tup.from = squid.endPoint.getId.toString
+    tup.from = squid.endPoint.getLocalNodeHandle
     var id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
     squid.routeTo(id, Marshal.dump(Array(tup)))
   }
@@ -94,7 +95,7 @@ class Comet(propertiesFilename : String) {
    */
   def out(tup : XmlTuple, blocking : Boolean = false){
     tup.operation = OperationTypes.OUT.toString
-    tup.from = squid.endPoint.getId.toString
+    tup.from = squid.endPoint.getLocalNodeHandle
     var id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
     squid.routeTo(id, Marshal.dump(Array(tup)))
   }
@@ -121,8 +122,14 @@ class Comet(propertiesFilename : String) {
    */
   def insert(tup : XmlTuple) {
     tuples.synchronized{
-      println("Comet: Inserting tuple")
       tuples += tup
+    }
+  }
+
+  def respond(tups : Array[XmlTuple], node : NodeHandle){
+    if (tups.size > 0) {
+      tups.foreach(tup => tup.operation = OperationTypes.RES.toString)
+      squid.direct(node, Marshal.dump(tups))
     }
   }
 
@@ -138,15 +145,19 @@ class Comet(propertiesFilename : String) {
         OperationTypes.withName(tup.operation) match {
           case OperationTypes.IN => {
             var matched = get(tup, true)
-            squid.direct(tup.from, Marshal.dump(matched))
+            respond(matched, tup.from)
           }
           case OperationTypes.OUT => {
             insert(tup)
           }
           case OperationTypes.RD => {
             var matched = get(tup, false)
-            squid.direct(tup.from, Marshal.dump(matched))
+            respond(matched, tup.from)
           }
+          case OperationTypes.RES => {
+            notify(tup.data)
+          }
+          case _ => println("Comet: Received tuple with an unknown operation " + tup.operation)
         }
       })
     } catch {

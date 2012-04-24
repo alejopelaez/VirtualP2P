@@ -24,9 +24,9 @@ import java.util.ArrayList;
 
 public class HilbertSFC {
 
-    int dimensions;
-    int bits;
-    int init;
+    private int dimensions;
+    private int bits;
+    private int init;
 
     private BigInteger ones, nthbits;
 

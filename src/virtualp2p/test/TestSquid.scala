@@ -11,7 +11,7 @@ import virtualp2p.squid._
 object TestSquid{
   def main(args: Array[String]){
     var squidNode : SquidNode = new SquidNode()
-    squidNode.join
+    squidNode.join()
 
     // To send a mesasge through squid, the types array and data arrays has to be constructed.
     var id : SquidId =  new SquidId(2, 160, Array("alphabetic", "alphabetic"), Array(("pp", "pp"), ("df", "df")))
@@ -21,6 +21,6 @@ object TestSquid{
     squidNode.routeTo(new SquidId(1, 32, Array("numeric"), Array(("99993122", "99993122"))), "holaaa".getBytes)
 
 
-    sys.exit
+    sys.exit()
   }
 }

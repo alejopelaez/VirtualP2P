@@ -1,6 +1,7 @@
 package virtualp2p.common
 import scala.xml._
 import collection.mutable.ListBuffer
+import rice.p2p.commonapi.NodeHandle
 
 /**
  * User: alejandro
@@ -13,12 +14,12 @@ object OperationTypes extends Enumeration {
   val RD = Value("RD")
   val IN = Value("IN")
   val OUT = Value("OUT")
+  val RES = Value("RES")
 }
 
 
 class XmlTuple(var header : Elem, var data : Array[Byte], var operation: String = "IN") extends Serializable{
-
-  var from : String = ""
+  var from : NodeHandle = null
 
   def getKeys : Array[(String, String)] = {
     var keys : ListBuffer[(String, String)] = new ListBuffer[(String, String)]

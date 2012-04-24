@@ -2,6 +2,7 @@ package virtualp2p.test
 
 import virtualp2p.comet.Comet
 import virtualp2p.common.XmlTuple
+import util.Marshal
 
 /**
  * User: alejandro
@@ -11,21 +12,26 @@ import virtualp2p.common.XmlTuple
 
 object TestComet {
   def receive(data : Array[Byte]){
-
+    val message = Marshal.load[String](data)
+    println(message)
   }
 
   def main(args: Array[String]){
     var comet : Comet = new Comet
-    comet.join
+    comet.join()
     val header = <keys><id>1</id><zone>as</zone></keys>
 
-    val tuple : XmlTuple = new XmlTuple(header, "hola".getBytes)
+    val tuple : XmlTuple = new XmlTuple(header, Marshal.dump("Probando"))
 
     comet.out(tuple)
     comet.register(TestComet.receive)
 
+    Thread.sleep(500)
+
     comet.rd(tuple)
 
-    //sys.exit
+    Thread.sleep(500)
+
+    sys.exit()
   }
 }

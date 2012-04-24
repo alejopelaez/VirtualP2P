@@ -32,9 +32,9 @@ class SquidId(val dimensions: Int, val bitLength: Int, val keyTypes: Array[Strin
 
   def root(num : Int, k : Int) : Int = {
     def pow(num : Int, k : Int) : Int = {
-      if (k == 0)return 1;
-      else if (k%2 == 0)return pow(num, k/2) * pow(num, k/2);
-      else return pow(num, k/2) * pow(num, k/2) * num;
+      if (k == 0) 1;
+      else if (k%2 == 0) pow(num, k/2) * pow(num, k/2);
+      else pow(num, k/2) * pow(num, k/2) * num;
     }
 
     var high = num; var low = 0; var mid = (high + low) / 2;
@@ -44,7 +44,7 @@ class SquidId(val dimensions: Int, val bitLength: Int, val keyTypes: Array[Strin
       else low = mid;
       mid = (high + low) / 2;
     }
-    return mid;
+    mid;
   }
   val bits: Int = root(bitLength, dimensions)
 

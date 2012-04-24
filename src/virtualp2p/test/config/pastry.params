@@ -24,8 +24,6 @@ pastry_messageDispatch_bufferIfNotReady = false
 pastry_messageDispatch_bufferSize = 32
 
 # FP 2.1 uses the new transport layer
-transport_wire_datagram_receive_buffer_size = 131072
-transport_wire_datagram_send_buffer_size = 65536
 transport_epoch_max_num_addresses = 2
 transport_sr_max_num_hops = 5
 
@@ -145,7 +143,7 @@ nat_network_prefixes = 127.0.0.1;10.;192.168.
 #this is useful for a firwall w/o UPnP support, and your IP address isn't static
 probe_for_external_address = false
 # values how to probe
-pastry_proxy_connectivity_timeout = 15000 
+pastry_proxy_connectivity_timeout = 15000
 pastry_proxy_connectivity_tries = 3
 # possible values: always, never, prefix (prefix is if the localAddress matches any of the nat_network_prefixes
 # whether to search for a nat using UPnP (default: prefix)
@@ -240,7 +238,7 @@ p2p_replication_manager_timeout_delay = 20000
 # this is the number of keys to delete when we detect a change in the replica set
 p2p_replication_manager_num_delete_at_once = 100
 # this is how often replication will wake up and do maintainence; 10 mins
-p2p_replication_maintenance_interval = 600000 
+p2p_replication_maintenance_interval = 600000
 # the maximum number of keys replication will try to exchange in a maintainence message
 p2p_replication_max_keys_in_message = 1000
 
@@ -256,12 +254,11 @@ p2p_util_encryptedOutputStream_buffer = 32678
 p2p_aggregation_logStatistics = true
 p2p_aggregation_flushDelayAfterJoin = 30000
 #5 MINS
-p2p_aggregation_flushStressInterval = 300000 
+p2p_aggregation_flushStressInterval = 300000
 #5 MINS
-p2p_aggregation_flushInterval = 300000 
-#1024*1024
+p2p_aggregation_flushInterval = 300000 #1024*1024
 p2p_aggregation_maxAggregateSize = 1048576 
-p2p_aggregation_maxObjectsInAggregate = 25
+2p_aggregation_maxObjectsInAggregate = 25
 p2p_aggregation_maxAggregatesPerRun = 2
 p2p_aggregation_addMissingAfterRefresh = true
 p2p_aggregation_maxReaggregationPerRefresh = 100
@@ -273,19 +270,19 @@ p2p_aggregation_pointerArrayLifetime = 1209600000
 p2p_aggregation_aggregateGracePeriod = 86400000
 #15 MINS 
 p2p_aggregation_aggrRefreshInterval = 900000 
-p2p_aggregation_aggrRefreshDelayAfterJoin = 70000
+pp_aggregation_aggrRefreshDelayAfterJoin = 70000
 #3 DAYS
 p2p_aggregation_expirationRenewThreshold = 259200000 
-p2p_aggregation_monitorEnabled = false
+p2_aggregation_monitorEnabled = false
 #15 MINS
 p2p_aggregation_monitorRefreshInterval = 900000 
-#5 MINS
+#5 INS
 p2p_aggregation_consolidationDelayAfterJoin = 300000 
-#15 MINS
+#15 INS
 p2p_aggregation_consolidationInterval = 900000 
-#14 DAYS
+#14 DYS
 p2p_aggregation_consolidationThreshold = 1209600000 
-p2p_aggregation_consolidationMinObjectsInAggregate = 20
+p2p_agregation_consolidationMinObjectsInAggregate = 20
 p2p_aggregation_consolidationMinComponentsAlive = 0.8
 p2p_aggregation_reconstructionMaxConcurrentLookups = 10
 p2p_aggregation_aggregateLogEnabled = true
@@ -293,7 +290,7 @@ p2p_aggregation_aggregateLogEnabled = true
 p2p_aggregation_statsGranularity = 3600000
 #3 WEEKS 
 p2p_aggregation_statsRange = 1814400000 
-p2p_aggregation_statsInterval = 60000
+p2p_aggegation_statsInterval = 60000
 p2p_aggregation_jitterRange = 0.1
 
 # glacier
@@ -306,20 +303,20 @@ p2p_glacier_expireNeighborsDelayAfterJoin = 30000
 #5 MINS
 p2p_glacier_expireNeighborsInterval = 300000 
 #5 DAYS
-p2p_glacier_neighborTimeout = 432000000 
-p2p_glacier_syncDelayAfterJoin = 30000
+2p_glacier_neighborTimeout = 432000000
+p2p_glacir_syncDelayAfterJoin = 30000
 #5 MINS
 p2p_glacier_syncMinRemainingLifetime = 300000 
-#insertTimeout
+#insertTimout
 p2p_glacier_syncMinQuietTime = 30000 
-p2p_glacier_syncBloomFilterNumHashes = 3
+p2p_glaciersyncBloomFilterNumHashes = 3
 p2p_glacier_syncBloomFilterBitsPerKey = 4
 p2p_glacier_syncPartnersPerTrial = 1
 #1 HOUR
 p2p_glacier_syncInterval = 3600000 
 #3 MINUTES
-p2p_glacier_syncRetryInterval = 180000 
-p2p_glacier_syncMaxFragments = 100
+pp_glacier_syncRetryInterval = 180000
+p2p_glacier_sncMaxFragments = 100
 p2p_glacier_fragmentRequestMaxAttempts = 0
 p2p_glacier_fragmentRequestTimeoutDefault = 10000
 p2p_glacier_fragmentRequestTimeoutMin = 10000
@@ -331,16 +328,16 @@ p2p_glacier_manifestRequestRetryBurst = 5
 p2p_glacier_manifestAggregationFactor = 5
 #3 MINUTES
 p2p_glacier_overallRestoreTimeout = 180000 
-p2p_glacier_handoffDelayAfterJoin = 45000
+p2p_glacier_hadoffDelayAfterJoin = 45000
 #4 MINUTES
 p2p_glacier_handoffInterval = 240000 
-p2p_glacier_handoffMaxFragments = 10
+p2p_glacier_hanoffMaxFragments = 10
 #10 MINUTES
 p2p_glacier_garbageCollectionInterval = 600000 
-p2p_glacier_garbageCollectionMaxFragmentsPerRun = 100
+p2p_glacier_garbgeCollectionMaxFragmentsPerRun = 100
 #10 MINUTES
 p2p_glacier_localScanInterval = 600000 
-p2p_glacier_localScanMaxFragmentsPerRun = 20
+p2p_glacier_localcanMaxFragmentsPerRun = 20
 p2p_glacier_restoreMaxRequestFactor = 4.0
 p2p_glacier_restoreMaxBoosts = 2
 p2p_glacier_rateLimitedCheckInterval = 30000
@@ -353,13 +350,13 @@ p2p_glacier_bulkRefreshManifestAggregationFactor = 20
 p2p_glacier_bulkRefreshPatchAggregationFactor = 50
 #3 MINUTES
 p2p_glacier_bulkRefreshPatchInterval = 180000 
-p2p_glacier_bulkRefreshPatchRetries = 2
+p2p_glacier_bulkRereshPatchRetries = 2
 p2p_glacier_bucketTokensPerSecond = 100000
 p2p_glacier_bucketMaxBurstSize = 200000
 p2p_glacier_jitterRange = 0.1
 #1 MINUTE
 p2p_glacier_statisticsReportInterval = 60000 
-p2p_glacier_maxActiveRestores = 3
+p2p_glacier_maxActieRestores = 3
 
 #transport layer testing params
 org.mpisws.p2p.testing.transportlayer.replay.Recorder_printlog = true

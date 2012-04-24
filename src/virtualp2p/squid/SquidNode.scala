@@ -1,15 +1,15 @@
 package virtualp2p.squid
 
-import java.io.{FileNotFoundException, IOException, FileInputStream}
+import java.io.{FileNotFoundException, FileInputStream}
 import scala.Predef._
 
-import java.util.{Properties}
+import java.util.Properties
 import java.net.{InetAddress, InetSocketAddress}
 
 import rice.pastry.standard.RandomNodeIdFactory
 import rice.pastry.socket.SocketPastryNodeFactory
 import rice.environment.Environment
-import rice.pastry.{NodeIdFactory, PastryNode}
+import rice.pastry.PastryNode
 import rice.pastry.commonapi.PastryIdFactory
 import rice.p2p.commonapi.{Endpoint, NodeHandle, Message, RouteMessage, Application, Id}
 import java.math.BigInteger
@@ -37,7 +37,7 @@ class SquidNode(propertiesFilename : String) extends Application{
     }
   }
   System.getProperties.load(input)
-  val properties = System.getProperties
+  val properties : Properties = System.getProperties
 
   val env = new Environment("config/pastry")
 
@@ -63,7 +63,7 @@ class SquidNode(propertiesFilename : String) extends Application{
    * If bootstrap property is set to true creates a new ring, else it tries to join an existing ring
    * using the bootAddress and bootPort properties.
    */
-  def join() = {
+  def join() {
     // construct the PastryNodeFactory, this is how we use rice.pastry.socket
     val factory = new SocketPastryNodeFactory(new RandomNodeIdFactory(env), localPort, env)
 
@@ -108,15 +108,13 @@ class SquidNode(propertiesFilename : String) extends Application{
 
   /**
    * Sends a direct message to a node.
-   * @param idString The id of the node.
+   * @param node The node handle of the node.
    * @param data The data to be sent.
    */
-  def direct(idString : String, data : Array[Byte]){
-    val factory : PastryIdFactory = new PastryIdFactory(env)
-    val id = factory.buildId(idString)
-    System.out.println(endPoint.getId + " sending direct to " + id);
-    val msg : SquidMessage = new SquidMessage(endPoint.getId, id, data);
-    endPoint.route(id, msg, null);
+  def direct(node : NodeHandle, data : Array[Byte]){
+    System.out.println("SquidNode: " + endPoint.getId + " sending direct to " + node.getId);
+    val msg : SquidMessage = new SquidMessage(endPoint.getId, node.getId, data);
+    endPoint.route(null, msg, node);
   }
 
   /**
@@ -148,7 +146,7 @@ class SquidNode(propertiesFilename : String) extends Application{
     val factory : PastryIdFactory = new PastryIdFactory(env)
     val id : Id = factory.buildId(mapping.indexToArray(index))
 
-    System.out.println(endPoint.getId + " sending to " + id);
+    System.out.println("SquidNode: " + endPoint.getId + " sending to " + id);
     val msg : SquidMessage = new SquidMessage(endPoint.getId, id, data);
     endPoint.route(id, msg, null);
   }
