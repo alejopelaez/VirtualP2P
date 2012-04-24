@@ -4,7 +4,8 @@ import scala.util.Marshal
 import java.io.{FileNotFoundException, FileInputStream}
 import virtualp2p.common._
 import virtualp2p.squid.{SquidId, JoinException, SquidNode}
-import collection.mutable.LinkedList
+import collection.mutable.ListBuffer
+import scala.Array
 
 /**
  * User: alejandro
@@ -17,8 +18,10 @@ import collection.mutable.LinkedList
  * @param propertiesFilename Path to the file with the properties of this node
  */
 class Comet(propertiesFilename : String) {
+  var callback : Array[Byte] => Unit = null
+
   // Data structure holding all the tuples
-  var tuples : LinkedList[XmlTuple] = new LinkedList[XmlTuple]
+  var tuples : ListBuffer[XmlTuple] = new ListBuffer[XmlTuple]
 
   //Load properties
   var input : FileInputStream = null
@@ -67,20 +70,33 @@ class Comet(propertiesFilename : String) {
    * @param tup The tuple to be stored.
    */
   def in(tup : XmlTuple){
+    tup.from = squid.endPoint.getId.toString
     var id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
-    squid.routeTo(id, Marshall.dump(tup))
+    squid.routeTo(id, Marshal.dump(Array(tup)))
   }
 
   /**
    * Reads a tuple from the space, but does not erase it.
-   * @param tup The
+   * @param tup The tuple to match against.
+   * @param blocking Run this as a blocking or non-blocking operation.
    */
-  def rd(tup : XmlTuple){
-
+  def rd(tup : XmlTuple, blocking : Boolean = false) {
+    tup.operation = OperationTypes.RD.toString
+    tup.from = squid.endPoint.getId.toString
+    var id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
+    squid.routeTo(id, Marshal.dump(Array(tup)))
   }
 
-  def out(tup : XmlTuple){
-
+  /**
+   * Reads a tuple from the space and erases it.
+   * @param tup The tuple to match against.
+   * @param blocking Run this as a blocking or non-blocking operation.
+   */
+  def out(tup : XmlTuple, blocking : Boolean = false){
+    tup.operation = OperationTypes.OUT.toString
+    tup.from = squid.endPoint.getId.toString
+    var id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
+    squid.routeTo(id, Marshal.dump(Array(tup)))
   }
 
   /**
@@ -90,45 +106,72 @@ class Comet(propertiesFilename : String) {
    * @return An Array of all tuples matching the given one.
    */
   def get(tup : XmlTuple, remove : Boolean = false) : Array[XmlTuple] = {
-    var list : LinkedList[XmlTuple] = new LinkedList[XmlTuple]
-    var rest : LinkedList[XmlTuple] = new LinkedList[XmlTuple]
+    var list : ListBuffer[XmlTuple] = new ListBuffer[XmlTuple]
+    var rest : ListBuffer[XmlTuple] = new ListBuffer[XmlTuple]
     tuples synchronized{
-      tuples.foreach(other => if(tup == other) list :+ other else if(remove) rest :+ other)
-      if (remove) tuples = rest
+      tuples.foreach(other => if(tup == other) list += other else if(remove) rest += other)
     }
-    list
+    if (remove) tuples = rest
+    list.toArray
   }
 
   /**
    * Inserts a new tuple.
-   * @param tup The tuple to be inserted
+   * @param tup The tuple to be inserted.
    */
   def insert(tup : XmlTuple) {
-    tuples.synchronized{(tup)}
+    tuples.synchronized{
+      println("Comet: Inserting tuple")
+      tuples += tup
+    }
   }
 
   /**
    * Receives a message from the comet space
-   * @param message The message received
+   * @param message The message received.
    */
   def receive(message: Array[Byte]){
     try{
-      val tup: XmlTuple = Marshal.load[XmlTuple](message)
-      println("Comet: received message tuple with " + tup.operation + " oepration")
-      tup.operation match {
-        case OperationTypes.IN => {
-          var matched = get(tup, true)
+      val tups: Array[XmlTuple] = Marshal.load[Array[XmlTuple]](message)
+      tups.foreach(tup => {
+        println("Comet: received message tuple with " + tup.operation + " oepration")
+        OperationTypes.withName(tup.operation) match {
+          case OperationTypes.IN => {
+            var matched = get(tup, true)
+            squid.direct(tup.from, Marshal.dump(matched))
+          }
+          case OperationTypes.OUT => {
+            insert(tup)
+          }
+          case OperationTypes.RD => {
+            var matched = get(tup, false)
+            squid.direct(tup.from, Marshal.dump(matched))
+          }
         }
-        case OperationTypes.OUT => {
-          insert(tup)
-        }
-        case OperationTypes.RD => {
-          var matched = get(tup, false)
-        }
-      }
+      })
     } catch {
       case e : ClassNotFoundException =>
         System.out.println("Comet: invalid message received " + e.getMessage)
     }
+  }
+
+  /**
+   * Calls the callback function with the data.
+   * @param data The data to send to the callback function.
+   */
+  def notify(data : Array[Byte]){
+    if (callback != null){
+      callback(data)
+    } else {
+      println("Comet: Warning - Callback is nil, did you forget to register the comet object?")
+    }
+  }
+
+  /**
+   * Register to comet to be able to receive data from the non blocking functions.
+   * @param func The callback to notify.
+   */
+  def register(func : Array[Byte] => Unit){
+    callback = func
   }
 }

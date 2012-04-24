@@ -1,10 +1,10 @@
 package virtualp2p.squid
 
+import java.io.{FileNotFoundException, IOException, FileInputStream}
 import scala.Predef._
 
 import java.util.{Properties}
 import java.net.{InetAddress, InetSocketAddress}
-import java.io.{IOException, FileNotFoundException, FileInputStream}
 
 import rice.pastry.standard.RandomNodeIdFactory
 import rice.pastry.socket.SocketPastryNodeFactory
@@ -107,6 +107,19 @@ class SquidNode(propertiesFilename : String) extends Application{
   }
 
   /**
+   * Sends a direct message to a node.
+   * @param idString The id of the node.
+   * @param data The data to be sent.
+   */
+  def direct(idString : String, data : Array[Byte]){
+    val factory : PastryIdFactory = new PastryIdFactory(env)
+    val id = factory.buildId(idString)
+    System.out.println(endPoint.getId + " sending direct to " + id);
+    val msg : SquidMessage = new SquidMessage(endPoint.getId, id, data);
+    endPoint.route(id, msg, null);
+  }
+
+  /**
    * Routes a message through the squid overlay
    * @param squidId The squid id of the destination
    */
@@ -159,7 +172,7 @@ class SquidNode(propertiesFilename : String) extends Application{
    */
   def deliver(id : Id, message : Message) {
     val squidMessage : SquidMessage = message.asInstanceOf[SquidMessage]
-    System.out.println("SquidNode: " + this + " received " + new String(squidMessage.data));
+    System.out.println("SquidNode: " + this.endPoint.getId + " received message " + squidMessage);
     callback(squidMessage.data)
   }
 
