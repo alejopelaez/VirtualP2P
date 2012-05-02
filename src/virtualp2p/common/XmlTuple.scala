@@ -38,6 +38,14 @@ class XmlTuple(var header : Elem, var data : Array[Byte], var operation: String 
   }
 
   /**
+   * Gets the id of this tuple
+   */
+  def getId : String = {
+    val a = (header \\ "id")
+    a.text
+  }
+
+  /**
    * Decides if the two xml tuples match each other
    */
   def ==(other : XmlTuple) : Boolean = {
@@ -46,9 +54,9 @@ class XmlTuple(var header : Elem, var data : Array[Byte], var operation: String 
     for (i : Int <- 0 to myKeys.size - 1){
       val myKey = myKeys(i)
       val otKey = otKeys(i)
-      if (myKey._1 != otKey._1)
+      if (myKey._2 != otKey._2)
         return false
-      else if (myKey._2 != "*" && myKey._2 != otKey._2)
+      else if (myKey._1 != "*" && myKey._1 != otKey._1)
         return false
     }
     true

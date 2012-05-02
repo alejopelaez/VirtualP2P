@@ -55,7 +55,7 @@ class Comet(propertiesFilename : String) {
   def join() {
     try {
       squid.join()
-      println("Comet node joined succesfully")
+      Logger.println("node joined succesfully", "Comet")
       //Register the receive method to listen to the messages from the overlay
       squid.register(receive)
     } catch {
@@ -121,8 +121,23 @@ class Comet(propertiesFilename : String) {
    * @param tup The tuple to be inserted.
    */
   def insert(tup : XmlTuple) {
+    var insert = true
+    var orig : XmlTuple = null
+    tuples.foreach(tuple => {
+      if (tup.getId == tuple.getId){
+        insert = false
+        orig = tuple
+      }
+    })
     tuples.synchronized{
-      tuples += tup
+      if (insert){
+        Logger.println("Inserting tuple with id " + tup.getId, "Comet")
+        tuples += tup
+      } else {
+        Logger.println("Tuple with id " + tup.getId + " ealready existed, updating it instead", "Comet")
+        orig.data = tup.data
+        orig.header = tup.header
+      }
     }
   }
 
@@ -141,28 +156,28 @@ class Comet(propertiesFilename : String) {
     try{
       val tups: Array[XmlTuple] = Marshal.load[Array[XmlTuple]](message)
       tups.foreach(tup => {
-        println("Comet: received message tuple with " + tup.operation + " oepration")
+        Logger.println("Received message tuple with " + tup.operation + " oepration", "Comet")
         OperationTypes.withName(tup.operation) match {
           case OperationTypes.IN => {
             var matched = get(tup, true)
-            respond(matched, tup.from)
+            if (matched.size > 0) respond(matched, tup.from)
           }
           case OperationTypes.OUT => {
             insert(tup)
           }
           case OperationTypes.RD => {
             var matched = get(tup, false)
-            respond(matched, tup.from)
+            if (matched.size > 0) respond(matched, tup.from)
           }
           case OperationTypes.RES => {
             notify(tup.data)
           }
-          case _ => println("Comet: Received tuple with an unknown operation " + tup.operation)
+          case _ => Logger.println("Received tuple with an unknown operation " + tup.operation, "Comet")
         }
       })
     } catch {
       case e : ClassNotFoundException =>
-        System.out.println("Comet: invalid message received " + e.getMessage)
+        println("Comet: invalid message received " + e.getMessage)
     }
   }
 
@@ -174,7 +189,7 @@ class Comet(propertiesFilename : String) {
     if (callback != null){
       callback(data)
     } else {
-      println("Comet: Warning - Callback is nil, did you forget to register the comet object?")
+      Logger.println("Comet: Warning - Callback is nil, did you forget to register the comet object?")
     }
   }
 

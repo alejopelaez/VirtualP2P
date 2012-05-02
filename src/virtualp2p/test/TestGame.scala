@@ -1,8 +1,8 @@
 package virtualp2p.test
 
 import virtualp2p.game.{Engine}
-import virtualp2p.common.XmlTuple
 import util.Marshal
+import virtualp2p.common.{Logger, XmlTuple}
 
 /**
  * User: alejandro
@@ -14,7 +14,7 @@ object TestGame {
 
   def main(args: Array[String]){
     var engine : Engine = new Engine
-
+    Logger.setProperties()
     engine.start
   }
 }

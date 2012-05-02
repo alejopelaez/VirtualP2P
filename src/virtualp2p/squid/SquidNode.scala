@@ -1,5 +1,7 @@
 package virtualp2p.squid
 
+import virtualp2p.common.Logger
+
 import java.io.{FileNotFoundException, FileInputStream}
 import scala.Predef._
 
@@ -74,14 +76,14 @@ class SquidNode(propertiesFilename : String) extends Application{
 
     // Determines if joining a ring or create a new one
     if (properties.getProperty("bootstrap", "false") == "true"){
-      println("Starting as bootstrap node...")
+      Logger.println("Starting as bootstrap node...", "SquidNode")
       val bootHandle : NodeHandle = null
       node.boot {bootHandle}
     }else{
       val bootAddr = InetAddress.getByName(properties.getProperty("bootAddress"))
       val bootPort = Integer.parseInt(properties.getProperty("bootPort", "9000"))
       val bootAddress = new InetSocketAddress(bootAddr,bootPort);
-      println("Connecting node to an existing pastry ring at " + bootAddress)
+      Logger.println("Connecting node to an existing pastry ring at " + bootAddress, "SquidNode")
       node.boot(bootAddress);
     }
 
@@ -93,7 +95,7 @@ class SquidNode(propertiesFilename : String) extends Application{
 
         // abort if can't join
         if (node.joinFailed) {
-          println("Could not join the FreePastry ring.  Reason:" + node.joinFailedReason)
+          Logger.println("Could not join the FreePastry ring.  Reason:" + node.joinFailedReason)
           throw new JoinException("Could not join the FreePastry ring.  Reason:" + node.joinFailedReason)
         }
       }
@@ -101,9 +103,9 @@ class SquidNode(propertiesFilename : String) extends Application{
     joined = true
 
     if (properties.getProperty("bootstrap", "false") == "true")
-      println("Succesfully created the ring")
+      Logger.println("Succesfully created the ring at " + node.getLocalNodeHandle, "SquidNode")
     else
-      println("Succesfully joined the ring")
+      Logger.println("Succesfully joined the ring", "SquidNode")
   }
 
   /**
@@ -112,7 +114,7 @@ class SquidNode(propertiesFilename : String) extends Application{
    * @param data The data to be sent.
    */
   def direct(node : NodeHandle, data : Array[Byte]){
-    System.out.println("SquidNode: " + endPoint.getId + " sending direct to " + node.getId);
+    Logger.println(endPoint.getId + " sending direct to " + node.getId, "SquidNode");
     val msg : SquidMessage = new SquidMessage(endPoint.getId, node.getId, data);
     endPoint.route(null, msg, node);
   }
@@ -146,7 +148,7 @@ class SquidNode(propertiesFilename : String) extends Application{
     val factory : PastryIdFactory = new PastryIdFactory(env)
     val id : Id = factory.buildId(mapping.indexToArray(index))
 
-    System.out.println("SquidNode: " + endPoint.getId + " sending to " + id);
+    Logger.println(endPoint.getId + " sending to " + id, "SquidNode");
     val msg : SquidMessage = new SquidMessage(endPoint.getId, id, data);
     endPoint.route(id, msg, null);
   }
@@ -170,7 +172,7 @@ class SquidNode(propertiesFilename : String) extends Application{
    */
   def deliver(id : Id, message : Message) {
     val squidMessage : SquidMessage = message.asInstanceOf[SquidMessage]
-    System.out.println("SquidNode: " + this.endPoint.getId + " received message " + squidMessage);
+    Logger.println(this.endPoint.getId + " received message " + squidMessage, "SquidNode");
     callback(squidMessage.data)
   }
 
