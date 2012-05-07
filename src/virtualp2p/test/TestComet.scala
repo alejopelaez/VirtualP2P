@@ -3,6 +3,7 @@ package virtualp2p.test
 import virtualp2p.comet.Comet
 import virtualp2p.common.XmlTuple
 import util.Marshal
+import java.util.Date
 
 /**
  * User: alejandro
@@ -11,7 +12,7 @@ import util.Marshal
  */
 
 object TestComet {
-  def receive(data : Array[Byte]){
+  def receive(data : Array[Byte], date : Date){
     val message = Marshal.load[String](data)
     println(message)
   }
@@ -23,12 +24,12 @@ object TestComet {
 
     val tuple : XmlTuple = new XmlTuple(header, Marshal.dump("Probando"))
 
-    comet.out(tuple)
+    comet.out(tuple, new Date)
     comet.register(TestComet.receive)
 
     Thread.sleep(500)
 
-    comet.rd(tuple)
+    comet.rd(tuple, new Date)
 
     Thread.sleep(500)
 

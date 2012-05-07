@@ -7,6 +7,7 @@ import virtualp2p.squid.{SquidId, JoinException, SquidNode}
 import scala.Array
 import collection.mutable.ListBuffer
 import rice.p2p.commonapi.NodeHandle
+import java.util.Date
 
 /**
  * User: alejandro
@@ -19,7 +20,7 @@ import rice.p2p.commonapi.NodeHandle
  * @param propertiesFilename Path to the file with the properties of this node
  */
 class Comet(propertiesFilename : String) {
-  var callback : Array[Byte] => Unit = null
+  var callback : (Array[Byte], Date) => Unit = null
 
   // Data structure holding all the tuples
   var tuples : ListBuffer[XmlTuple] = new ListBuffer[XmlTuple]
@@ -81,9 +82,10 @@ class Comet(propertiesFilename : String) {
    * @param tup The tuple to match against.
    * @param blocking Run this as a blocking or non-blocking operation.
    */
-  def rd(tup : XmlTuple, blocking : Boolean = false) {
+  def rd(tup : XmlTuple, date : Date, blocking : Boolean = false) {
     tup.operation = OperationTypes.RD.toString
     tup.from = squid.endPoint.getLocalNodeHandle
+    tup.date = date
     var id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
     squid.routeTo(id, Marshal.dump(Array(tup)))
   }
@@ -93,9 +95,10 @@ class Comet(propertiesFilename : String) {
    * @param tup The tuple to match against.
    * @param blocking Run this as a blocking or non-blocking operation.
    */
-  def out(tup : XmlTuple, blocking : Boolean = false){
+  def out(tup : XmlTuple, date : Date, blocking : Boolean = false){
     tup.operation = OperationTypes.OUT.toString
     tup.from = squid.endPoint.getLocalNodeHandle
+    tup.date = date
     var id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
     squid.routeTo(id, Marshal.dump(Array(tup)))
   }
@@ -141,9 +144,12 @@ class Comet(propertiesFilename : String) {
     }
   }
 
-  def respond(tups : Array[XmlTuple], node : NodeHandle){
+  def respond(tups : Array[XmlTuple], node : NodeHandle, date : Date){
     if (tups.size > 0) {
-      tups.foreach(tup => tup.operation = OperationTypes.RES.toString)
+      tups.foreach(tup => {
+        tup.operation = OperationTypes.RES.toString
+        tup.date = date
+      })
       squid.direct(node, Marshal.dump(tups))
     }
   }
@@ -160,17 +166,17 @@ class Comet(propertiesFilename : String) {
         OperationTypes.withName(tup.operation) match {
           case OperationTypes.IN => {
             var matched = get(tup, true)
-            if (matched.size > 0) respond(matched, tup.from)
+            if (matched.size > 0) respond(matched, tup.from, tup.date)
           }
           case OperationTypes.OUT => {
             insert(tup)
           }
           case OperationTypes.RD => {
             var matched = get(tup, false)
-            if (matched.size > 0) respond(matched, tup.from)
+            if (matched.size > 0) respond(matched, tup.from, tup.date)
           }
           case OperationTypes.RES => {
-            notify(tup.data)
+            notify(tup.data, tup.date)
           }
           case _ => Logger.println("Received tuple with an unknown operation " + tup.operation, "Comet")
         }
@@ -185,9 +191,9 @@ class Comet(propertiesFilename : String) {
    * Calls the callback function with the data.
    * @param data The data to send to the callback function.
    */
-  def notify(data : Array[Byte]){
+  def notify(data : Array[Byte], date : Date){
     if (callback != null){
-      callback(data)
+      callback(data, date)
     } else {
       Logger.println("Comet: Warning - Callback is nil, did you forget to register the comet object?")
     }
@@ -197,7 +203,7 @@ class Comet(propertiesFilename : String) {
    * Register to comet to be able to receive data from the non blocking functions.
    * @param func The callback to notify.
    */
-  def register(func : Array[Byte] => Unit){
+  def register(func : (Array[Byte], Date) => Unit){
     callback = func
   }
 }

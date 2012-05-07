@@ -15,7 +15,6 @@ import com.jme3.input.controls.{AnalogListener, ActionListener, MouseButtonTrigg
 import com.jme3.math._
 
 import java.io.{FileNotFoundException, FileInputStream}
-import java.util.Properties
 import com.jme3.input.{ChaseCamera, MouseInput, KeyInput}
 import com.jme3.scene.control.CameraControl.ControlDirection
 import com.jme3.texture.Texture
@@ -24,6 +23,8 @@ import com.jme3.terrain.geomipmap.{TerrainLodControl, TerrainQuad}
 import com.jme3.terrain.heightmap.{RawHeightMap, HeightMap, ImageBasedHeightMap}
 import com.jme3.scene.{Node, CameraNode, Spatial, Geometry}
 import util.{Marshal, Random}
+import java.util.{Date, Properties}
+import com.jme3.font.BitmapText
 
 /**
  * User: alejandro
@@ -47,6 +48,17 @@ class Engine(file : String) extends SimpleApplication {
   var avatarSpeed = 75.0f
   var score = 0
   var ai = false
+  var backend = "comet"
+
+  //GUI texts
+  var latencyText : BitmapText = null
+  var rmessagesText : BitmapText= null
+  var smessagesText : BitmapText= null
+
+  // Statistics
+  var averageLatency = 0.0f
+  var messagesReceived = 0
+  var messagesSent = 0
 
   val rand : Random = new Random()
 
@@ -66,6 +78,7 @@ class Engine(file : String) extends SimpleApplication {
     properties = System.getProperties
 
     updateTime = properties.getProperty("updateTime", "0.5").toFloat
+    backend = properties.getProperty("backend", "comet")
   }
 
   def rotate(value : Float){
@@ -168,6 +181,14 @@ class Engine(file : String) extends SimpleApplication {
     terrain.addControl(control);
   }
 
+  def loadText(text : BitmapText, content : String, offset : Int) {
+    text.setSize(guiFont.getCharSet().getRenderedSize());
+    text.setColor(ColorRGBA.White);
+    text.setText(content);
+    text.setLocalTranslation(0, text.getLineHeight() + offset, 0);
+    guiNode.attachChild(text);
+  }
+
   /**
    * Performs some initial configuration.
    */
@@ -176,13 +197,26 @@ class Engine(file : String) extends SimpleApplication {
     initKeys()
     loadTerrain
 
+    // Load statistics text
+    setDisplayStatView(false)
+    latencyText = new BitmapText(guiFont, false);
+    loadText(latencyText, "0.0", 20)
+    rmessagesText = new BitmapText(guiFont, false);
+    loadText(rmessagesText, "0", 40)
+    smessagesText = new BitmapText(guiFont, false);
+    loadText(smessagesText, "0", 60)
+
     setPauseOnLostFocus(false);
     flyCam.setEnabled(false);
 
-    comet = new Comet
-    comet.join() //Fundamental to have a connection to comet
-    comet.register(receive)
-    Logger.println("Started succesfully", "Engine")
+    if (backend == "comet") {
+      comet = new Comet
+      comet.join() //Fundamental to have a connection to comet
+      comet.register(receive)
+      Logger.println("Started succesfully using comet backend", "Engine")
+    } else {
+      //TODO start meteor backend
+    }
 
     //Creates the avatar
     avatar = new Avatar(Vector3f.ZERO, rand.nextLong().toString, assetManager)
@@ -208,14 +242,15 @@ class Engine(file : String) extends SimpleApplication {
   /**
    * Sends the current state to comet.
    */
-  def sendState() {
+  def sendState {
     var id : String= avatar.id
     var typ : String = avatar.objectType
     var trans = avatar.spatial.getLocalTransform
     var updateMessage = new UpdateMessage(trans, id, typ)
     var header = <header><keys><type>1</type><zone>1</zone></keys><secondary><id>{id}</id></secondary></header>
     var tuple : XmlTuple = new XmlTuple(header, Marshal.dump(updateMessage))
-    comet.out(tuple)
+    messagesSent += 1
+    comet.out(tuple, new Date)
 
     id = flag.id
     typ = flag.objectType
@@ -223,30 +258,43 @@ class Engine(file : String) extends SimpleApplication {
     updateMessage = new UpdateMessage(trans, id, typ)
     header = <header><keys><type>2</type><zone>1</zone></keys><secondary><id>{id}</id></secondary></header>
     tuple = new XmlTuple(header, Marshal.dump(updateMessage))
-    comet.out(tuple)
+    messagesSent += 1
+    comet.out(tuple, new Date)
   }
 
   /**
    * Gets the current state from comet.
    */
-  def getState() {
+  def getState {
     var header = <header><keys><type>1</type><zone>1</zone></keys><secondary><id>*</id></secondary></header>
     var tuple : XmlTuple = new XmlTuple(header, null)
-    comet.rd(tuple)
+    comet.rd(tuple, new Date)
 
     header = <header><keys><type>2</type><zone>1</zone></keys><secondary><id>*</id></secondary></header>
     tuple = new XmlTuple(header, null)
-    comet.rd(tuple)
+    comet.rd(tuple, new Date)
+  }
+
+  /**
+   * Publish the state to meteor
+   */
+  def publishState{
+    //TODO publish the state to meteor
   }
 
   /**
    * Updates the player positions in the network.
    */
   def updateNetwork() {
-    Logger.println("Sending state to comet", "Engine")
-    sendState
-    Logger.println("Getting state from comet", "Engine")
-    getState()
+    if (backend == "comet") {
+      Logger.println("Sending state to comet", "Engine")
+      sendState
+      Logger.println("Getting state from comet", "Engine")
+      getState
+    } else {
+      Logger.println("Publishing state to meteor", "Engine")
+      publishState
+    }
   }
 
   /**
@@ -331,23 +379,43 @@ class Engine(file : String) extends SimpleApplication {
         obj.deadReckoning(tpf, speed)
       }
     })
+
+    //Update GUI statistics
+    latencyText.setText("Average latency: " + averageLatency.toString + "ms")
+    rmessagesText.setText("Message received: " + messagesReceived.toString)
+    smessagesText.setText("Message sent: " + messagesSent.toString)
   }
 
   /**
-   * Receives a message from comet
+   * Receives a message from comet or meteor
    */
-  def receive(data : Array[Byte]) {
+  def receive(data : Array[Byte], date : Date) {
     val message = Marshal.load[UpdateMessage](data)
     UpdateQueue.queueUpdate(message)
+
+    //Take some statistics
+    messagesReceived += 1
+    val n = messagesReceived.toFloat
+    val current : Date = new Date
+    val diff = current.getTime - date.getTime
+    averageLatency = averageLatency * (n - 1.0f)/n + diff.toFloat/n
   }
 
   /**
    * Exits the application
    */
   override def stop(){
-    // TODO some cleanup and stuff
+    // TODO some cleanup and stuff (delete avatar and cube)
     Logger.println("Exiting", "Engine")
     super.stop()
     sys.exit()
+  }
+
+  /**
+   * When clicking X button
+   */
+  override def destroy {
+    super.destroy()
+    stop()
   }
 }

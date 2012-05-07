@@ -2,6 +2,7 @@ package virtualp2p.common
 import scala.xml._
 import collection.mutable.ListBuffer
 import rice.p2p.commonapi.NodeHandle
+import java.util.Date
 
 /**
  * User: alejandro
@@ -20,6 +21,7 @@ object OperationTypes extends Enumeration {
 
 class XmlTuple(var header : Elem, var data : Array[Byte], var operation: String = "IN") extends Serializable{
   var from : NodeHandle = null
+  var date : Date = null
 
   def getKeys : Array[(String, String)] = {
     var keys : ListBuffer[(String, String)] = new ListBuffer[(String, String)]
