@@ -16,11 +16,11 @@ import util.Random
 /**
  * Base class for all game objects
  */
-abstract class GameObject(var position : Vector3f, var id : String, var objectType : String){
+abstract class GameObject(position : Vector3f, var id : String, var objectType : String){
   var spatial : Spatial
   var pastTransforms : Array[(Transform, Float)]
 
-  def deadReckoning(tpf : Float)
+  def deadReckoning(tpf : Float, speed : Float)
 
   /**
    * Attachs a camera to this object

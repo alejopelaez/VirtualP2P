@@ -14,9 +14,9 @@ class Avatar(position : Vector3f, id : String, assetManager : AssetManager) exte
   override var spatial = assetManager.loadModel("Models/Ninja/Ninja.mesh.xml")
   spatial.scale(0.05f, 0.05f, 0.05f)
 
-  override var pastTransforms = new Array[(Transform, Float)](3)
+  override var pastTransforms = new Array[(Transform, Float)](2)
 
-  def deadReckoning(tpf : Float){
+  def deadReckoning(tpf : Float, speed : Float){
     val tr1 = pastTransforms(0)
     val tr2 = pastTransforms(1)
 
@@ -28,7 +28,7 @@ class Avatar(position : Vector3f, id : String, assetManager : AssetManager) exte
     val direction = p1.subtract(p2)
 
     if (direction.lengthSquared() < 0.0001f) return
-    val newPos = spatial.getLocalTranslation.add(direction.mult(tpf))
+    val newPos = spatial.getLocalTranslation.add(direction.mult(tpf*speed*1.4f))
 
     spatial.setLocalTranslation(newPos)
     //addTransform(spatial.getLocalTransform, tpf)

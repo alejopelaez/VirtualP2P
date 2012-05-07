@@ -24,5 +24,5 @@ class Flag(position : Vector3f, id : String, color : ColorRGBA, assetManager : A
 
   override var pastTransforms = new Array[(Transform, Float)](1)
 
-  def deadReckoning(tpf : Float){}
+  def deadReckoning(tpf : Float, speed : Float){}
 }

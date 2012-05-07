@@ -46,6 +46,7 @@ class Engine(file : String) extends SimpleApplication {
   var properties : Properties = null
   var avatarSpeed = 75.0f
   var score = 0
+  var ai = false
 
   val rand : Random = new Random()
 
@@ -67,6 +68,16 @@ class Engine(file : String) extends SimpleApplication {
     updateTime = properties.getProperty("updateTime", "0.5").toFloat
   }
 
+  def rotate(value : Float){
+    avatar.spatial.rotate(0, avatarSpeed * value * 0.1f, 0)
+  }
+
+  def walk(value : Float) {
+    val f : Vector3f = avatar.spatial.getLocalRotation.getRotationColumn(2)
+    val v : Vector3f = avatar.spatial.getLocalTranslation
+    avatar.spatial.setLocalTranslation(v.add(f.mult(-avatarSpeed*value)))
+  }
+
   /**
    * Init the key bindings
    */
@@ -75,7 +86,11 @@ class Engine(file : String) extends SimpleApplication {
     val actionListener : ActionListener = new ActionListener {
       def onAction(name: String, isPressed: Boolean, tpf: Float) {
         name match {
-          case _ => Logger.println("Unknown action " + name, "Engine")
+          case "ai" => {
+            if (!isPressed)
+              ai = !ai
+          }
+          case _ => Logger.println("Engine: Unknown action " + name, "Engine")
         }
       }
     }
@@ -83,19 +98,11 @@ class Engine(file : String) extends SimpleApplication {
     val analogListener : AnalogListener = new AnalogListener {
       def onAnalog(name: String, value: Float, tpf: Float) {
         name match {
-          case "Right" => avatar.spatial.rotate(0, -avatarSpeed * value * 0.1f, 0)
-          case "Left" => avatar.spatial.rotate(0, avatarSpeed * value * 0.1f, 0)
-          case "Up" => {
-            val f : Vector3f = avatar.spatial.getLocalRotation.getRotationColumn(2)
-            val v : Vector3f = avatar.spatial.getLocalTranslation
-            avatar.spatial.setLocalTranslation(v.add(f.mult(avatarSpeed*value).negate))
-          }
-          case "Down" => {
-            val f : Vector3f = avatar.spatial.getLocalRotation.getRotationColumn(2)
-            val v : Vector3f = avatar.spatial.getLocalTranslation
-            avatar.spatial.setLocalTranslation(v.add(f.mult(avatarSpeed*value)))
-          }
-          case _ => Logger.println("Engine: Unknown action " + name)
+          case "Right" => rotate(-value)
+          case "Left"  => rotate(value)
+          case "Up"    => walk(value)
+          case "Down"  => walk(-value)
+          case _       => Logger.println("Engine: Unknown action " + name)
         }
       }
     }
@@ -104,13 +111,14 @@ class Engine(file : String) extends SimpleApplication {
     inputManager.addMapping("Pause",  new KeyTrigger(KeyInput.KEY_P))
     inputManager.addMapping("Left",   new KeyTrigger(KeyInput.KEY_A))
     inputManager.addMapping("Right",  new KeyTrigger(KeyInput.KEY_D))
-    inputManager.addMapping("Up",   new KeyTrigger(KeyInput.KEY_W))
-    inputManager.addMapping("Down",  new KeyTrigger(KeyInput.KEY_S))
+    inputManager.addMapping("Up",     new KeyTrigger(KeyInput.KEY_W))
+    inputManager.addMapping("Down",   new KeyTrigger(KeyInput.KEY_S))
+    inputManager.addMapping("ai",     new KeyTrigger(KeyInput.KEY_T))
 
     new MouseButtonTrigger((MouseInput.BUTTON_LEFT))
 
     // Add the names to the action listener.
-    inputManager.addListener(actionListener, "Pause", "Quit")
+    inputManager.addListener(actionListener, "Pause", "Quit", "ai")
     inputManager.addListener(analogListener, "Left", "Right", "Up", "Down")
   }
 
@@ -293,16 +301,34 @@ class Engine(file : String) extends SimpleApplication {
 
     //Check if we captured the flag
     val distance = avatar.spatial.getLocalTranslation.distanceSquared(flag.spatial.getLocalTranslation)
-    if(distance < 40){
+    if(distance < 60){
       Logger.println("Captured the flag!!", "Engine")
       score += 1
       flag.generateRandomPosition(rand)
     }
 
+    //AI
+    if (ai){
+      val flagPos : Vector3f = flag.spatial.getLocalTranslation
+      val avatarPos : Vector3f = avatar.spatial.getLocalTranslation
+      val dir = flagPos.subtract(avatarPos).normalize()
+      val currDir = avatar.spatial.getLocalRotation.getRotationColumn(2).negate
+      val mag = 1 - dir.dot(currDir)/(dir.length() * currDir.length())
+
+      val cross = dir.cross(currDir)
+
+      if (cross.y < 0)
+        rotate(tpf*mag*1.5f)
+      else
+        rotate(-tpf*mag*1.5f)
+
+      walk(tpf*1.2f)
+    }
+
     //Perform dead reckoning on the avatars
     objects.foreach(obj => {
       if (obj.id != avatar.id && obj.objectType == ObjectTypes.AVATAR.toString){
-        obj.deadReckoning(tpf)
+        obj.deadReckoning(tpf, speed)
       }
     })
   }
