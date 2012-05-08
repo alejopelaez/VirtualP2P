@@ -380,7 +380,7 @@ class Engine(file : String) extends SimpleApplication {
     //Check if we captured the flag
     val distance = avatar.spatial.getLocalTranslation.distanceSquared(flag.spatial.getLocalTranslation)
     if(distance < 60){
-      Logger.println("Captured the flag!!", "Engine")
+      Logger.println("Captured the flag!", "Engine")
       score += 1
       flag.generateRandomPosition(rand)
     }
