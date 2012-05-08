@@ -46,7 +46,7 @@ class SquidId(val dimensions: Int, val bitLength: Int, val keyTypes: Array[Strin
     }
     mid;
   }
-  val bits: Int = root(bitLength, dimensions)
+  val bits: Int = bitLength/dimensions
 
   var hasRanges: Boolean = false
   //var ChordIDCluster chordMapping : ChordIDCluster = null;

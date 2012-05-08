@@ -15,6 +15,7 @@ import rice.pastry.PastryNode
 import rice.pastry.commonapi.PastryIdFactory
 import rice.p2p.commonapi.{Endpoint, NodeHandle, Message, RouteMessage, Application, Id}
 import java.math.BigInteger
+import java.security.MessageDigest
 
 /**
  * User: alejandro
@@ -146,10 +147,16 @@ class SquidNode(propertiesFilename : String) extends Application{
       squidId.getKeyBits.map(x => new BigInteger(x.toString()))
     }
     val factory : PastryIdFactory = new PastryIdFactory(env)
-    val id : Id = factory.buildId(mapping.indexToArray(index))
+
+    val md = MessageDigest.getInstance("SHA1")
+    md.update(index.toByteArray)
+    val id : Id = factory.buildId(md.digest)
+    //val id : Id = factory.buildId(mapping.indexToArray(index))
 
     Logger.println(endPoint.getId + " sending to " + id, "SquidNode");
     val msg : SquidMessage = new SquidMessage(endPoint.getId, id, data);
+
+
     endPoint.route(id, msg, null);
   }
   def routeSimple(squidId : SquidId, msg : SquidMessage) {

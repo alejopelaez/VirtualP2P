@@ -100,7 +100,7 @@ public class HilbertSFC {
     public BigInteger coordinatesToIndex(BigInteger[] coords) {
         dimensions = coords.length;
         bits = Integer.parseInt(System.getProperties().getProperty("bitLength", "160"));
-        init(dimensions,  root(bits, dimensions));
+        init(dimensions,  bits/dimensions);
         BigInteger index = new BigInteger("0");
         // Verification
         boolean argumentsPassed = true;

@@ -35,8 +35,8 @@ abstract class GameObject(position : Vector3f, var id : String, var objectType :
   }
 
   def generateRandomPosition(rand : Random){
-    val x = (rand.nextFloat() - 0.5f)*500.0f
-    val z = (rand.nextFloat() - 0.5f)*500.0f
+    val x = (rand.nextFloat() - 0.5f)*800.0f
+    val z = (rand.nextFloat() - 0.5f)*800.0f
 
     spatial.setLocalTranslation(x,4f,z)
   }

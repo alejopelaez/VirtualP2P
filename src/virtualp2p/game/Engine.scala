@@ -11,8 +11,6 @@ import com.jme3.material.Material
 
 import com.jme3.scene.shape.Box
 import com.jme3.light.DirectionalLight
-import com.jme3.input.controls.{AnalogListener, ActionListener, MouseButtonTrigger, KeyTrigger}
-import com.jme3.math._
 
 import java.io.{FileNotFoundException, FileInputStream}
 import com.jme3.input.{ChaseCamera, MouseInput, KeyInput}
@@ -22,9 +20,12 @@ import com.jme3.texture.Texture.WrapMode
 import com.jme3.terrain.geomipmap.{TerrainLodControl, TerrainQuad}
 import com.jme3.terrain.heightmap.{RawHeightMap, HeightMap, ImageBasedHeightMap}
 import com.jme3.scene.{Node, CameraNode, Spatial, Geometry}
-import util.{Marshal, Random}
 import java.util.{Date, Properties}
 import com.jme3.font.BitmapText
+import com.jme3.system.AppSettings
+import com.jme3.input.controls._
+import com.jme3.math._
+import util.{Marshal, Random}
 
 /**
  * User: alejandro
@@ -32,11 +33,19 @@ import com.jme3.font.BitmapText
  * Time: 06:44 PM
  */
 
+
+
 /**
  * Main class which handles the high level logic of the game.
  */
 class Engine(file : String) extends SimpleApplication {
   def this() = this("config/engine.properties")
+
+  //Some constants
+  val AVATAR_TYPE = 1
+  val FLAG_TYPE = 2
+  val AREAS_ID = Array[Int](1, 2, 3, 4)
+  var current_area = 1
 
   var comet : Comet = null
   var objects : ListBuffer[GameObject] = new ListBuffer[GameObject]()
@@ -51,9 +60,7 @@ class Engine(file : String) extends SimpleApplication {
   var backend = "comet"
 
   //GUI texts
-  var latencyText : BitmapText = null
-  var rmessagesText : BitmapText= null
-  var smessagesText : BitmapText= null
+  var stat_text : BitmapText = null
 
   // Statistics
   var averageLatency = 0.0f
@@ -199,12 +206,8 @@ class Engine(file : String) extends SimpleApplication {
 
     // Load statistics text
     setDisplayStatView(false)
-    latencyText = new BitmapText(guiFont, false);
-    loadText(latencyText, "0.0", 20)
-    rmessagesText = new BitmapText(guiFont, false);
-    loadText(rmessagesText, "0", 40)
-    smessagesText = new BitmapText(guiFont, false);
-    loadText(smessagesText, "0", 60)
+    stat_text = new BitmapText(guiFont, false);
+    loadText(stat_text, "0", 125)
 
     setPauseOnLostFocus(false);
     flyCam.setEnabled(false);
@@ -231,12 +234,12 @@ class Engine(file : String) extends SimpleApplication {
     rootNode.attachChild(flag.spatial)
 
     // You must add a light to make the model visible
-    var sun : DirectionalLight = new DirectionalLight();
-    sun.setDirection(new Vector3f(70f, -70f, 70f));
-    rootNode.addLight(sun);
-    var sun2 : DirectionalLight = new DirectionalLight();
-    sun.setDirection(new Vector3f(-70f, -70f, -70f));
-    rootNode.addLight(sun2);
+    var sun : DirectionalLight = new DirectionalLight()
+    sun.setDirection(new Vector3f(70f, -70f, 70f))
+    rootNode.addLight(sun)
+    var sun2 : DirectionalLight = new DirectionalLight()
+    sun.setDirection(new Vector3f(-70f, -70f, -70f))
+    rootNode.addLight(sun2)
   }
 
   /**
@@ -247,7 +250,10 @@ class Engine(file : String) extends SimpleApplication {
     var typ : String = avatar.objectType
     var trans = avatar.spatial.getLocalTransform
     var updateMessage = new UpdateMessage(trans, id, typ)
-    var header = <header><keys><type>1</type><zone>1</zone></keys><secondary><id>{id}</id></secondary></header>
+    var header = <header>
+                    <keys><type>{AVATAR_TYPE}</type><zone>{current_area}</zone></keys>
+                    <secondary><id>{id}</id></secondary>
+                 </header>
     var tuple : XmlTuple = new XmlTuple(header, Marshal.dump(updateMessage))
     messagesSent += 1
     comet.out(tuple, new Date)
@@ -256,7 +262,7 @@ class Engine(file : String) extends SimpleApplication {
     typ = flag.objectType
     trans = flag.spatial.getLocalTransform
     updateMessage = new UpdateMessage(trans, id, typ)
-    header = <header><keys><type>2</type><zone>1</zone></keys><secondary><id>{id}</id></secondary></header>
+    header = <header><keys><type>{FLAG_TYPE}</type><zone>1</zone></keys><secondary><id>{id}</id></secondary></header>
     tuple = new XmlTuple(header, Marshal.dump(updateMessage))
     messagesSent += 1
     comet.out(tuple, new Date)
@@ -266,12 +272,16 @@ class Engine(file : String) extends SimpleApplication {
    * Gets the current state from comet.
    */
   def getState {
-    var header = <header><keys><type>1</type><zone>1</zone></keys><secondary><id>*</id></secondary></header>
-    var tuple : XmlTuple = new XmlTuple(header, null)
-    comet.rd(tuple, new Date)
+    AREAS_ID.foreach(area => {
+      var header = <header><keys><type>{AVATAR_TYPE}</type><zone>{area}</zone></keys><secondary><id>*</id></secondary></header>
+      var tuple : XmlTuple = new XmlTuple(header, null)
+      messagesSent += 1
+      comet.rd(tuple, new Date)
+    })
 
-    header = <header><keys><type>2</type><zone>1</zone></keys><secondary><id>*</id></secondary></header>
-    tuple = new XmlTuple(header, null)
+    var header = <header><keys><type>{FLAG_TYPE}</type><zone>1</zone></keys><secondary><id>*</id></secondary></header>
+    var tuple = new XmlTuple(header, null)
+    messagesSent += 1
     comet.rd(tuple, new Date)
   }
 
@@ -287,12 +297,9 @@ class Engine(file : String) extends SimpleApplication {
    */
   def updateNetwork() {
     if (backend == "comet") {
-      Logger.println("Sending state to comet", "Engine")
       sendState
-      Logger.println("Getting state from comet", "Engine")
       getState
     } else {
-      Logger.println("Publishing state to meteor", "Engine")
       publishState
     }
   }
@@ -328,12 +335,36 @@ class Engine(file : String) extends SimpleApplication {
     }
   }
 
+  def changeArea(target : Int){
+    var header = <header><keys><type>{AVATAR_TYPE}</type><zone>{current_area}</zone></keys><secondary><id>{avatar.id}</id></secondary></header>
+    var tuple : XmlTuple = new XmlTuple(header, null)
+    messagesSent += 1
+    //Erase the tuple from comet
+    comet.in(tuple, new Date)
+
+    current_area = target
+    //Clear the objects
+    objects.foreach(obj => {
+      if (obj.id != avatar.id && obj.id != flag.id)
+        rootNode.detachChild(obj.spatial)
+    })
+    objects.clear
+    objects += avatar
+    objects += flag
+    Logger.println("Engine: Changing area to: " + current_area, "Engine")
+  }
+
   /**
    * The update loop.
    */
   override def simpleUpdate(tpf : Float) {
     acumTime += tpf
     if (acumTime > updateTime){
+      //Check if we changed area
+      val tmp = getArea(avatar)
+      if (tmp != current_area){
+        changeArea(tmp)
+      }
       updateNetwork()
       acumTime = 0
     }
@@ -341,7 +372,6 @@ class Engine(file : String) extends SimpleApplication {
     // Process all pending update jobs
     val updates = UpdateQueue.pendingUpdates
     if (updates.size > 0) {
-      Logger.println("Processing " + updates.size + " pending updates", "Engine")
       updates.foreach(update => {
         processUpdate(update, tpf)
       })
@@ -381,9 +411,31 @@ class Engine(file : String) extends SimpleApplication {
     })
 
     //Update GUI statistics
-    latencyText.setText("Average latency: " + averageLatency.toString + "ms")
-    rmessagesText.setText("Message received: " + messagesReceived.toString)
-    smessagesText.setText("Message sent: " + messagesSent.toString)
+    var text = ""
+    text += "Average latency: " + averageLatency + "ms\n"
+    text += "Messages received: " + messagesReceived + "\n"
+    text += "Messages sent: " + messagesSent + "\n"
+    if (backend == "comet"){
+      text += "Comet messages sent: " + comet.messagesSent + "\n"
+      text += "Comet messages received: " + comet.messagesReceived + "\n"
+      text += "Comet objects stored: " + comet.numberStored
+    } else {
+
+    }
+    stat_text.setText(text)
+  }
+
+  def getArea(obj : GameObject) : Int = {
+    val pos = obj.spatial.getLocalTranslation
+    if (pos.x >= 0.0f && pos.z >= 0.0f){
+      AREAS_ID(0)
+    } else if (pos.x >= 0.0f && pos.z < 0.0f){
+      AREAS_ID(1)
+    }  else if (pos.x < 0.0f && pos.z < 0.0f){
+      AREAS_ID(2)
+    } else {
+      AREAS_ID(3)
+    }
   }
 
   /**
@@ -407,6 +459,9 @@ class Engine(file : String) extends SimpleApplication {
   override def stop(){
     // TODO some cleanup and stuff (delete avatar and cube)
     Logger.println("Exiting", "Engine")
+    Logger.println("Average Latency: " + averageLatency + "ms", "Engine")
+    Logger.println("Messages Sent: " + messagesSent, "Engine")
+    Logger.println("Messages received: " + messagesReceived, "Engine")
     super.stop()
     sys.exit()
   }

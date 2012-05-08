@@ -20,6 +20,9 @@ import java.util.Date
  * @param propertiesFilename Path to the file with the properties of this node
  */
 class Comet(propertiesFilename : String) {
+  var messagesSent = 0
+  var messagesReceived = 0
+
   var callback : (Array[Byte], Date) => Unit = null
 
   // Data structure holding all the tuples
@@ -68,12 +71,15 @@ class Comet(propertiesFilename : String) {
   }
 
   /**
-   * Stores a tuple in the comet space.
-   * @param tup The tuple to be stored.
+   * Reads a tuple from the space and erases it.
+   * @param tup The tuple to match against.
+   * @param blocking Run this as a blocking or non-blocking operation.
    */
-  def in(tup : XmlTuple){
+  def in(tup : XmlTuple, date : Date, blocking : Boolean = false){
     tup.from = squid.endPoint.getLocalNodeHandle
-    var id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
+    tup.date = date
+    val id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
+    messagesSent += 1
     squid.routeTo(id, Marshal.dump(Array(tup)))
   }
 
@@ -86,37 +92,50 @@ class Comet(propertiesFilename : String) {
     tup.operation = OperationTypes.RD.toString
     tup.from = squid.endPoint.getLocalNodeHandle
     tup.date = date
-    var id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
+    val id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
+    messagesSent += 1
     squid.routeTo(id, Marshal.dump(Array(tup)))
   }
 
   /**
-   * Reads a tuple from the space and erases it.
+   * Inserts a tuple into the space.
    * @param tup The tuple to match against.
-   * @param blocking Run this as a blocking or non-blocking operation.
    */
-  def out(tup : XmlTuple, date : Date, blocking : Boolean = false){
+  def out(tup : XmlTuple, date : Date){
     tup.operation = OperationTypes.OUT.toString
     tup.from = squid.endPoint.getLocalNodeHandle
     tup.date = date
-    var id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
+    val id : SquidId =  new SquidId(dimensions, bits, types, tup.getKeys)
+    messagesSent += 1
     squid.routeTo(id, Marshal.dump(Array(tup)))
   }
 
   /**
    * Gets a list of tuples matching the given one.
    * @param tup The tuple used as comparisson.
-   * @param remove Specify wehter to remove or keep the returned tuples.
    * @return An Array of all tuples matching the given one.
    */
-  def get(tup : XmlTuple, remove : Boolean = false) : Array[XmlTuple] = {
+  def get(tup : XmlTuple) : Array[XmlTuple] = {
     var list : ListBuffer[XmlTuple] = new ListBuffer[XmlTuple]
-    var rest : ListBuffer[XmlTuple] = new ListBuffer[XmlTuple]
     tuples synchronized{
-      tuples.foreach(other => if(tup == other) list += other else if(remove) rest += other)
+      tuples.foreach(other => {
+        if (tup.from.getId.toString != other.from.getId.toString)
+          if(tup == other)
+            list += other
+      })
     }
-    if (remove) tuples = rest
     list.toArray
+  }
+
+  def remove(tup : XmlTuple){
+    var list : ListBuffer[XmlTuple] = new ListBuffer[XmlTuple]
+    tuples synchronized{
+      tuples.foreach(other => {
+          if(!(tup == other))
+            list += other
+      })
+    }
+    tuples = list
   }
 
   /**
@@ -150,6 +169,7 @@ class Comet(propertiesFilename : String) {
         tup.operation = OperationTypes.RES.toString
         tup.date = date
       })
+      messagesSent += 1
       squid.direct(node, Marshal.dump(tups))
     }
   }
@@ -159,20 +179,20 @@ class Comet(propertiesFilename : String) {
    * @param message The message received.
    */
   def receive(message: Array[Byte]){
+    messagesReceived += 1
     try{
       val tups: Array[XmlTuple] = Marshal.load[Array[XmlTuple]](message)
       tups.foreach(tup => {
         Logger.println("Received message tuple with " + tup.operation + " oepration", "Comet")
         OperationTypes.withName(tup.operation) match {
           case OperationTypes.IN => {
-            var matched = get(tup, true)
-            if (matched.size > 0) respond(matched, tup.from, tup.date)
+            remove(tup)
           }
           case OperationTypes.OUT => {
             insert(tup)
           }
           case OperationTypes.RD => {
-            var matched = get(tup, false)
+            var matched = get(tup)
             if (matched.size > 0) respond(matched, tup.from, tup.date)
           }
           case OperationTypes.RES => {
@@ -205,5 +225,9 @@ class Comet(propertiesFilename : String) {
    */
   def register(func : (Array[Byte], Date) => Unit){
     callback = func
+  }
+
+  def numberStored : Int = {
+    tuples.size
   }
 }
