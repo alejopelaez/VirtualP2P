@@ -26,6 +26,7 @@ import com.jme3.system.AppSettings
 import com.jme3.input.controls._
 import com.jme3.math._
 import util.{Marshal, Random}
+import virtualp2p.meteor.Meteor
 
 /**
  * User: alejandro
@@ -48,6 +49,7 @@ class Engine(file : String) extends SimpleApplication {
   var current_area = 1
 
   var comet : Comet = null
+  var meteor : Meteor = null
   var objects : ListBuffer[GameObject] = new ListBuffer[GameObject]()
   var avatar : GameObject = null
   var flag : GameObject = null
@@ -82,6 +84,7 @@ class Engine(file : String) extends SimpleApplication {
       }
     }
     System.getProperties.load(input)
+    input.close
     properties = System.getProperties
 
     updateTime = properties.getProperty("updateTime", "0.5").toFloat
@@ -218,7 +221,11 @@ class Engine(file : String) extends SimpleApplication {
       comet.register(receive)
       Logger.println("Started succesfully using comet backend", "Engine")
     } else {
-      //TODO start meteor backend
+      meteor = new Meteor
+      meteor.join() //Fundamental to have a connection to comet
+      meteor.register(receive)
+      subscribe
+      Logger.println("Started succesfully using meteor backend", "Engine")
     }
 
     //Creates the avatar
@@ -286,10 +293,60 @@ class Engine(file : String) extends SimpleApplication {
   }
 
   /**
+   * Subscribe to the notifications for the current area.
+   */
+  def subscribe {
+    AREAS_ID.foreach(area => {
+      var header = <header><keys><type>{AVATAR_TYPE}</type><zone>{area}</zone></keys><secondary><id>*</id></secondary></header>
+      var tuple : XmlTuple = new XmlTuple(header, null)
+      messagesSent += 1
+      meteor.subscribe(tuple, new Date)
+    })
+
+    var header = <header><keys><type>{FLAG_TYPE}</type><zone>1</zone></keys><secondary><id>*</id></secondary></header>
+    var tuple = new XmlTuple(header, null)
+    messagesSent += 1
+    meteor.subscribe(tuple, new Date)
+  }
+
+  def unsubscribe {
+    AREAS_ID.foreach(area => {
+      var header = <header><keys><type>{AVATAR_TYPE}</type><zone>{area}</zone></keys><secondary><id>*</id></secondary></header>
+      var tuple : XmlTuple = new XmlTuple(header, null)
+      messagesSent += 1
+      meteor.unsubscribe(tuple, new Date)
+    })
+
+    var header = <header><keys><type>{FLAG_TYPE}</type><zone>1</zone></keys><secondary><id>*</id></secondary></header>
+    var tuple = new XmlTuple(header, null)
+    messagesSent += 1
+    meteor.unsubscribe(tuple, new Date)
+  }
+
+  /**
    * Publish the state to meteor
    */
   def publishState{
-    //TODO publish the state to meteor
+    var id : String= avatar.id
+    var typ : String = avatar.objectType
+    var trans = avatar.spatial.getLocalTransform
+    var updateMessage = new UpdateMessage(trans, id, typ)
+    var header = <header>
+      <keys><type>{AVATAR_TYPE}</type><zone>{current_area}</zone></keys>
+      <secondary><id>{id}</id></secondary>
+    </header>
+    var tuple : XmlTuple = new XmlTuple(header, Marshal.dump(updateMessage))
+    messagesSent += 1
+    meteor.publish(tuple, new Date)
+
+    id = flag.id
+    typ = flag.objectType
+    trans = flag.spatial.getLocalTransform
+    updateMessage = new UpdateMessage(trans, id, typ)
+    header = <header><keys><type>{FLAG_TYPE}</type><zone>1</zone></keys><secondary><id>{id}</id></secondary></header>
+    tuple = new XmlTuple(header, Marshal.dump(updateMessage))
+    messagesSent += 1
+    meteor.publish(tuple, new Date)
   }
 
   /**
@@ -312,8 +369,10 @@ class Engine(file : String) extends SimpleApplication {
     var found = false
     objects.foreach(obj => {
       if (obj.objectType == message.objectType && obj.id == message.id){
-        if (obj.id != avatar.id) obj.addTransform(message.transform, tpf)
-        obj.spatial.setLocalTransform(message.transform)
+        if (obj.id != avatar.id){
+          obj.addTransform(message.transform, tpf)
+          obj.spatial.setLocalTransform(message.transform)
+        }
         found = true
       }
     })
@@ -336,11 +395,16 @@ class Engine(file : String) extends SimpleApplication {
   }
 
   def changeArea(target : Int){
-    var header = <header><keys><type>{AVATAR_TYPE}</type><zone>{current_area}</zone></keys><secondary><id>{avatar.id}</id></secondary></header>
-    var tuple : XmlTuple = new XmlTuple(header, null)
-    messagesSent += 1
-    //Erase the tuple from comet
-    comet.in(tuple, new Date)
+    if (backend == "comet"){
+      var header = <header><keys><type>{AVATAR_TYPE}</type><zone>{current_area}</zone></keys><secondary><id>{avatar.id}</id></secondary></header>
+      var tuple : XmlTuple = new XmlTuple(header, null)
+      messagesSent += 1
+      //Erase the tuple from comet
+      comet.in(tuple, new Date)
+    } else {
+      unsubscribe
+      subscribe
+    }
 
     current_area = target
     //Clear the objects
@@ -363,6 +427,7 @@ class Engine(file : String) extends SimpleApplication {
       //Check if we changed area
       val tmp = getArea(avatar)
       if (tmp != current_area){
+        //subscribe
         changeArea(tmp)
       }
       updateNetwork()
@@ -420,7 +485,9 @@ class Engine(file : String) extends SimpleApplication {
       text += "Comet messages received: " + comet.messagesReceived + "\n"
       text += "Comet objects stored: " + comet.numberStored
     } else {
-
+      text += "Meteor messages sent: " + meteor.messagesSent + "\n"
+      text += "Meteor messages received: " + meteor.messagesReceived + "\n"
+      text += "Meteor objects stored: " + meteor.numberStored
     }
     stat_text.setText(text)
   }

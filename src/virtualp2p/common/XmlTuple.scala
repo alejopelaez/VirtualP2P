@@ -15,6 +15,9 @@ object OperationTypes extends Enumeration {
   val RD = Value("RD")
   val IN = Value("IN")
   val OUT = Value("OUT")
+  val PUBLISH = Value("PUBLISH")
+  val SUBSCRIBE = Value("SUBSCRIBE")
+  val UNSUBSCRIBE = Value("UNSUBSCRIBE")
   val RES = Value("RES")
 }
 

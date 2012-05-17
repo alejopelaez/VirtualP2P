@@ -1,7 +1,5 @@
 package virtualp2p.squid
 
-import virtualp2p.common.Logger
-
 import java.io.{FileNotFoundException, FileInputStream}
 import scala.Predef._
 
@@ -16,6 +14,7 @@ import rice.pastry.commonapi.PastryIdFactory
 import rice.p2p.commonapi.{Endpoint, NodeHandle, Message, RouteMessage, Application, Id}
 import java.math.BigInteger
 import java.security.MessageDigest
+import virtualp2p.common.{PropertiesLoader, Logger}
 
 /**
  * User: alejandro
@@ -25,41 +24,26 @@ import java.security.MessageDigest
 
 /**
  * Class that represents a node on the squid overlay
- * @param propertiesFilename Path to the file with the properties of this node
+ * @param properties The properties of this node
  */
-class SquidNode(propertiesFilename : String) extends Application{
-  //Load properties
-  var input : FileInputStream = null
-  try {
-    input = new FileInputStream(propertiesFilename);
-  } catch {
-    case
-      e : FileNotFoundException => {
-        println("SquidNode constructor: " + e.getMessage)
-        sys.exit()
-    }
-  }
-  System.getProperties.load(input)
-  val properties : Properties = System.getProperties
+class SquidNode(properties : Properties, defaultPort : String = "9000") extends Application{
+  // Other constructors
+  def this(filename : String) = this(PropertiesLoader.load(filename))
+  def this() = this("config/squid.properties")
 
   val env = new Environment("config/pastry")
-
   var node : PastryNode = null
   var endPoint : Endpoint = null
-
   var mapping : HilbertSFC = new HilbertSFC
-
   var joined : Boolean = false
-
   var callback : Array[Byte] => Unit = null
 
   // The port
-  val localPort : Int = Integer.parseInt(properties.getProperty("localPort", "9000"))
-
-  /**
-   * Constructor that looks for the properties file in the default location.
-   */
-  def this() = this("config/squid.properties")
+  val localPort =
+  if (defaultPort == "9000")
+    Integer.parseInt(properties.getProperty("localPort", "9000"))
+  else
+    Integer.parseInt(defaultPort)
 
   /**
    * Joins a ring.
@@ -117,7 +101,15 @@ class SquidNode(propertiesFilename : String) extends Application{
   def direct(node : NodeHandle, data : Array[Byte]){
     Logger.println(endPoint.getId + " sending direct to " + node.getId, "SquidNode");
     val msg : SquidMessage = new SquidMessage(endPoint.getId, node.getId, data);
-    endPoint.route(null, msg, node);
+
+    class MyThread() extends Thread{
+      override def run(){
+        env.getTimeSource.sleep(50)
+        endPoint.route(null, msg, node);
+      }
+    }
+    val thread = new MyThread
+    thread.start
   }
 
   /**
@@ -156,9 +148,18 @@ class SquidNode(propertiesFilename : String) extends Application{
     Logger.println(endPoint.getId + " sending to " + id, "SquidNode");
     val msg : SquidMessage = new SquidMessage(endPoint.getId, id, data);
 
+    class MyThread() extends Thread{
+      override def run(){
+        env.getTimeSource.sleep(50)
+        endPoint.route(id, msg, null);
+      }
+    }
 
-    endPoint.route(id, msg, null);
+    val thread = new MyThread
+    thread.start
   }
+
+
   def routeSimple(squidId : SquidId, msg : SquidMessage) {
     routeSimple(squidId, msg.data)
   }
