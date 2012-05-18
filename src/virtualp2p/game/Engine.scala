@@ -4,7 +4,6 @@ import virtualp2p.comet.Comet
 import virtualp2p.common.{XmlTuple, Logger}
 
 import scala.Array
-import collection.mutable.ListBuffer
 
 import com.jme3.app.SimpleApplication
 import com.jme3.material.Material
@@ -27,6 +26,7 @@ import com.jme3.math._
 import util.{Marshal, Random}
 import virtualp2p.meteor.Meteor
 import java.io._
+import collection.mutable.{ArrayBuffer, ListBuffer}
 
 /**
  * User: alejandro
@@ -45,7 +45,7 @@ class Engine(file : String) extends SimpleApplication {
   //Some constants
   val AVATAR_TYPE = 1
   val FLAG_TYPE = 2
-  val AREAS_ID = Array[Int](1, 2, 3, 4)
+  val AREAS_ID = Array[Int](1, 2, 3, 4, 5, 6, 7, 8)
   var current_area = 1
 
   var comet : Comet = null
@@ -294,7 +294,7 @@ class Engine(file : String) extends SimpleApplication {
    * Gets the current state from comet.
    */
   def getState {
-    AREAS_ID.foreach(area => {
+    getNeighborAreas.foreach(area => {
       var header = <header><keys><type>{AVATAR_TYPE}</type><zone>{area}</zone></keys><secondary><id>*</id></secondary></header>
       var tuple : XmlTuple = new XmlTuple(header, null)
       messagesSent += 1
@@ -311,7 +311,7 @@ class Engine(file : String) extends SimpleApplication {
    * Subscribe to the notifications for the current area.
    */
   def subscribe {
-    AREAS_ID.foreach(area => {
+    getNeighborAreas.foreach(area => {
       var header = <header><keys><type>{AVATAR_TYPE}</type><zone>{area}</zone></keys><secondary><id>*</id></secondary></header>
       var tuple : XmlTuple = new XmlTuple(header, null)
       messagesSent += 1
@@ -325,7 +325,7 @@ class Engine(file : String) extends SimpleApplication {
   }
 
   def unsubscribe {
-    AREAS_ID.foreach(area => {
+    getNeighborAreas.foreach(area => {
       var header = <header><keys><type>{AVATAR_TYPE}</type><zone>{area}</zone></keys><secondary><id>*</id></secondary></header>
       var tuple : XmlTuple = new XmlTuple(header, null)
       messagesSent += 1
@@ -416,12 +416,13 @@ class Engine(file : String) extends SimpleApplication {
       messagesSent += 1
       //Erase the tuple from comet
       comet.in(tuple, new Date)
+      current_area = target
     } else {
       unsubscribe
+      current_area = target
       subscribe
     }
 
-    current_area = target
     //Clear the objects
     objects.foreach(obj => {
       if (obj.id != avatar.id && obj.id != flag.id)
@@ -430,7 +431,7 @@ class Engine(file : String) extends SimpleApplication {
     objects.clear
     objects += avatar
     objects += flag
-    Logger.println("Engine: Changing area to: " + current_area, "Engine")
+    Logger.println("Changing area to: " + current_area, "Engine")
   }
 
   def endSimulation(tpf : Float) {
@@ -564,17 +565,55 @@ class Engine(file : String) extends SimpleApplication {
       stat_text.setText(text)
   }
 
+  def getNeighborAreas : Array[Int] = {
+    var ans = new ArrayBuffer[Int]()
+    ans += current_area
+    if (current_area + 8 < 64)
+      ans += current_area + 8
+    if (current_area - 8 >= 0)
+      ans += current_area - 8
+    if (current_area%8 != 0){
+      ans += current_area + 1
+      if (current_area - 7 >= 0)
+        ans += current_area - 7
+      if (current_area + 9 < 64)
+        ans += current_area + 9
+    }
+    if (current_area%8 != 1){
+      ans += current_area - 1
+      if (current_area - 9 >= 0)
+        ans += current_area - 9
+      if (current_area + 7 < 64)
+        ans += current_area + 7
+    }
+    ans.toArray
+  }
+
   def getArea(obj : GameObject) : Int = {
     val pos = obj.spatial.getLocalTranslation
-    if (pos.x >= 0.0f && pos.z >= 0.0f){
-      AREAS_ID(0)
-    } else if (pos.x >= 0.0f && pos.z < 0.0f){
-      AREAS_ID(1)
-    }  else if (pos.x < 0.0f && pos.z < 0.0f){
-      AREAS_ID(2)
-    } else {
-      AREAS_ID(3)
+    val offset = pos.z match {
+      case x if x <= -192.0f => 0
+      case x if x <= -128.0f => 1
+      case x if x <= -64.0f => 2
+      case x if x <= 0.0f => 3
+      case x if x <= 64.0f => 4
+      case x if x <= 128.0f => 5
+      case x if x <= 192.0f => 6
+      case _ => 7
     }
+
+    val area = pos.x match {
+      case x if x <= -192.0f => AREAS_ID(0)
+      case x if x <= -128.0f => AREAS_ID(1)
+      case x if x <= -64.0f => AREAS_ID(2)
+      case x if x <= 0.0f => AREAS_ID(3)
+      case x if x <= 64.0f => AREAS_ID(4)
+      case x if x <= 128.0f => AREAS_ID(5)
+      case x if x <= 192.0f => AREAS_ID(6)
+      case _ => AREAS_ID(7)
+    }
+
+    area + 8*offset
   }
 
   /**
