@@ -197,7 +197,15 @@ class SquidNode(properties : Properties, defaultPort : String = "9000") extends 
    * Don't worry about this method for now.
    */
   def forward(message : RouteMessage) : Boolean = {
-    true;
+    class MyThread() extends Thread{
+      override def run(){
+        env.getTimeSource.sleep(delay*0.7)
+      }
+    }
+    val thread = new MyThread
+    thread.start
+
+    true
   }
 
   def register(func : Array[Byte] => Unit) {
