@@ -204,6 +204,11 @@ class Meteor(properties : Properties, defaultPort : String = "9000") {
     callback = func
   }
 
+  def resetStatistics(){
+    messagesSent = 0
+    messagesReceived = 0
+  }
+
   def numberStored : Int = {
     tuples.size
   }

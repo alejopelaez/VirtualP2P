@@ -12,7 +12,6 @@ import com.jme3.material.Material
 import com.jme3.scene.shape.Box
 import com.jme3.light.DirectionalLight
 
-import java.io.{FileNotFoundException, FileInputStream}
 import com.jme3.input.{ChaseCamera, MouseInput, KeyInput}
 import com.jme3.scene.control.CameraControl.ControlDirection
 import com.jme3.texture.Texture
@@ -27,6 +26,7 @@ import com.jme3.input.controls._
 import com.jme3.math._
 import util.{Marshal, Random}
 import virtualp2p.meteor.Meteor
+import java.io._
 
 /**
  * User: alejandro
@@ -60,11 +60,16 @@ class Engine(file : String) extends SimpleApplication {
   var score = 0
   var ai = false
   var backend = "comet"
+  var started = false
+  var runTime = 0.0f
+  var fps = 0.0f
 
   //GUI texts
   var stat_text : BitmapText = null
 
   // Statistics
+  var runningTime = 0.0f
+  var takeStatistics = false
   var averageLatency = 0.0f
   var messagesReceived = 0
   var messagesSent = 0
@@ -89,6 +94,7 @@ class Engine(file : String) extends SimpleApplication {
 
     updateTime = properties.getProperty("updateTime", "0.5").toFloat
     backend = properties.getProperty("backend", "comet")
+    runningTime = Integer.parseInt(properties.getProperty("runningTime", "120")).toFloat
   }
 
   def rotate(value : Float){
@@ -110,8 +116,17 @@ class Engine(file : String) extends SimpleApplication {
       def onAction(name: String, isPressed: Boolean, tpf: Float) {
         name match {
           case "ai" => {
-            if (!isPressed)
+            if (!isPressed){
               ai = !ai
+              started = true
+              takeStatistics = true
+              runTime = 0.0f
+              averageLatency = 0.0f
+              messagesReceived = 0
+              messagesSent = 0
+              if (backend == "comet")comet.resetStatistics()
+              if (backend == "meteor")meteor.resetStatistics()
+            }
           }
           case _ => Logger.println("Engine: Unknown action " + name, "Engine")
         }
@@ -210,7 +225,7 @@ class Engine(file : String) extends SimpleApplication {
     // Load statistics text
     setDisplayStatView(false)
     stat_text = new BitmapText(guiFont, false);
-    loadText(stat_text, "0", 125)
+    loadText(stat_text, "0", 145)
 
     setPauseOnLostFocus(false);
     flyCam.setEnabled(false);
@@ -418,10 +433,65 @@ class Engine(file : String) extends SimpleApplication {
     Logger.println("Engine: Changing area to: " + current_area, "Engine")
   }
 
+  def endSimulation(tpf : Float) {
+    ai = false
+    takeStatistics = false
+    started = false
+    //write the statistic to a file
+    try{
+      val base = "results"
+      var suf = 0
+      var filename = base + suf.toString
+      var f = new File(filename)
+      while(f.exists()){
+        suf += 1
+        filename = base + suf.toString
+        f = new File(filename)
+      }
+      val fstream = new FileWriter(filename);
+      val out = new BufferedWriter(fstream);
+
+      var text = ""
+      text += "Running time: " + runTime + "s\n"
+      text += "Average latency: " + averageLatency + "ms\n"
+      text += "Messages received: " + messagesReceived + "\n"
+      text += "Messages sent: " + messagesSent + "\n"
+      if (backend == "comet"){
+        text += "Comet messages sent: " + comet.messagesSent + "\n"
+        text += "Comet messages received: " + comet.messagesReceived + "\n"
+        text += "Comet objects stored: " + comet.numberStored
+      } else {
+        text += "Meteor messages sent: " + meteor.messagesSent + "\n"
+        text += "Meteor messages received: " + meteor.messagesReceived + "\n"
+        text += "Meteor objects stored: " + meteor.numberStored
+      }
+      text += "\nFPS: " + fps
+      out.write(text);
+      //Close the output stream
+      out.close();
+    } catch {
+      case
+        e : FileNotFoundException => {
+        println(e.getMessage)
+        sys.exit()
+      }
+    }
+    runTime = 0.0f
+  }
+
   /**
    * The update loop.
    */
   override def simpleUpdate(tpf : Float) {
+    fps = fps*0.999f + (1.0f/tpf)*0.001f
+
+    if (started){
+      runTime += tpf
+      if (runTime > runningTime){
+        endSimulation(tpf)
+      }
+    }
+
     acumTime += tpf
     if (acumTime > updateTime){
       //Check if we changed area
@@ -477,6 +547,7 @@ class Engine(file : String) extends SimpleApplication {
 
     //Update GUI statistics
     var text = ""
+    text += "Running time: " + runTime + "s\n"
     text += "Average latency: " + averageLatency + "ms\n"
     text += "Messages received: " + messagesReceived + "\n"
     text += "Messages sent: " + messagesSent + "\n"
@@ -489,7 +560,8 @@ class Engine(file : String) extends SimpleApplication {
       text += "Meteor messages received: " + meteor.messagesReceived + "\n"
       text += "Meteor objects stored: " + meteor.numberStored
     }
-    stat_text.setText(text)
+    if (takeStatistics)
+      stat_text.setText(text)
   }
 
   def getArea(obj : GameObject) : Int = {

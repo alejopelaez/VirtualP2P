@@ -37,6 +37,7 @@ class SquidNode(properties : Properties, defaultPort : String = "9000") extends 
   var mapping : HilbertSFC = new HilbertSFC
   var joined : Boolean = false
   var callback : Array[Byte] => Unit = null
+  val delay = Integer.parseInt(properties.getProperty("delay","0"))
 
   // The port
   val localPort =
@@ -104,7 +105,7 @@ class SquidNode(properties : Properties, defaultPort : String = "9000") extends 
 
     class MyThread() extends Thread{
       override def run(){
-        env.getTimeSource.sleep(50)
+        env.getTimeSource.sleep(delay)
         endPoint.route(null, msg, node);
       }
     }
@@ -150,7 +151,7 @@ class SquidNode(properties : Properties, defaultPort : String = "9000") extends 
 
     class MyThread() extends Thread{
       override def run(){
-        env.getTimeSource.sleep(50)
+        env.getTimeSource.sleep(delay)
         endPoint.route(id, msg, null);
       }
     }
